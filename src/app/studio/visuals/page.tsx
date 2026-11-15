@@ -1,7 +1,6 @@
+ "use client";
 
-"use client";
-
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 
 const kinds = [
@@ -74,8 +73,12 @@ export default function VisualStudio() {
         throw new Error(data.error || "Не удалось создать материал.");
       }
 
+      if (typeof data.image !== "string" || !data.image.startsWith("data:image/")) {
+        throw new Error("Сервис вернул изображение в неизвестном формате. Попробуй ещё раз.");
+      }
+
       setImage(data.image);
-      setLabels(data.labels || []);
+      setLabels(Array.isArray(data.labels) ? data.labels : []);
       setRemaining(
         typeof data.remaining === "number" ? data.remaining : null
       );
@@ -89,10 +92,13 @@ export default function VisualStudio() {
   function downloadImage() {
     if (!image) return;
 
+    const extension = image.startsWith("data:image/png") ? "png" : "jpg";
     const a = document.createElement("a");
     a.href = image;
-    a.download = "AI-KIDS-visual-material.jpg";
+    a.download = `AI-KIDS-visual-material.${extension}`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
   }
 
   function printMaterial() {
@@ -101,37 +107,94 @@ export default function VisualStudio() {
     const win = window.open("", "_blank");
 
     if (!win) {
-      setError("Разреши всплывающие окна в браузере.");
+      setError("Разреши всплывающие окна в браузере, чтобы открыть печать.");
       return;
     }
 
+    win.document.open();
     win.document.write(`
       <!DOCTYPE html>
-      <html>
+      <html lang="ru">
       <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>AI KIDS — материал для печати</title>
         <style>
-          @page { size: A4 portrait; margin: 0; }
-          body { margin: 0; text-align: center; }
-          img { width: 100%; height: 100vh; object-fit: contain; }
-          @media print { img { width: 100%; height: 100%; } }
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+            background: #ffffff;
+          }
+
+          body {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+          }
+
+          img {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 194mm;
+            max-height: 281mm;
+            object-fit: contain;
+            page-break-inside: avoid;
+          }
+
+          @media print {
+            html, body {
+              width: 100%;
+              height: auto;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            img {
+              max-width: 194mm;
+              max-height: 281mm;
+            }
+          }
         </style>
       </head>
       <body>
-        <img src="${image}" />
+        <img id="print-image" src="${image}" alt="Материал AI KIDS для печати" />
         <script>
-          window.onload = () => {
-            setTimeout(() => window.print(), 500);
+          const image = document.getElementById("print-image");
+          image.onload = () => {
+            setTimeout(() => {
+              window.focus();
+              window.print();
+            }, 300);
           };
+          image.onerror = () => {
+            document.body.innerHTML = "<p>Не удалось загрузить изображение для печати. Закрой окно и попробуй скачать PNG.</p>";
+          };
+          if (image.complete && image.naturalWidth > 0) {
+            setTimeout(() => {
+              window.focus();
+              window.print();
+            }, 300);
+          }
         </script>
       </body>
       </html>
     `);
-
     win.document.close();
   }
 
-  const fieldStyle: React.CSSProperties = {
+  const fieldStyle: CSSProperties = {
     width: "100%",
     padding: "12px",
     border: "1px solid #d9e2f0",
@@ -142,7 +205,7 @@ export default function VisualStudio() {
     marginTop: "7px",
   };
 
-  const labelStyle: React.CSSProperties = {
+  const labelStyle: CSSProperties = {
     display: "block",
     fontWeight: 600,
     color: "#315b96",
@@ -226,6 +289,7 @@ export default function VisualStudio() {
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="Например: Подводный мир"
                   style={fieldStyle}
+                  maxLength={160}
                 />
               </div>
             )}
@@ -288,18 +352,21 @@ export default function VisualStudio() {
 
           <p style={{ color: "#8290a5", fontSize: 12, marginTop: 12 }}>
             Создание изображения использует баланс OpenAI API.
-            Для начала рекомендуем выбрать 2–4 элемента.
+            Для первого теста рекомендуем выбрать 2–4 элемента.
           </p>
         </div>
 
         {error && (
-          <div style={{
-            marginTop: 20,
-            padding: 15,
-            borderRadius: 10,
-            background: "#fff0f0",
-            color: "#a33",
-          }}>
+          <div
+            role="alert"
+            style={{
+              marginTop: 20,
+              padding: 15,
+              borderRadius: 10,
+              background: "#fff0f0",
+              color: "#a33",
+            }}
+          >
             {error}
           </div>
         )}
@@ -317,13 +384,15 @@ export default function VisualStudio() {
               ✨ Твой готовый материал
             </h2>
 
-            <div style={{
-              display: "flex",
-              justifyContent: "center",
-              background: "#f5f7fb",
-              padding: 12,
-              borderRadius: 12,
-            }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                background: "#f5f7fb",
+                padding: 12,
+                borderRadius: 12,
+              }}
+            >
               <img
                 src={image}
                 alt="Созданный наглядный материал AI KIDS"
@@ -334,30 +403,44 @@ export default function VisualStudio() {
                   height: "auto",
                   objectFit: "contain",
                   background: "white",
+                  borderRadius: 6,
                 }}
               />
             </div>
 
-            <h3 style={{ color: "#315b96" }}>Названия элементов</h3>
-            <ol>
-              {labels.map((item, index) => (
-                <li key={index} style={{ marginBottom: 6 }}>{item}</li>
-              ))}
-            </ol>
+            {labels.length > 0 && (
+              <>
+                <h3 style={{ color: "#315b96" }}>Названия элементов</h3>
+                <ol>
+                  {labels.map((item, index) => (
+                    <li key={`${index}-${item}`} style={{ marginBottom: 6 }}>
+                      {item}
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
 
-            <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              marginTop: 20,
-            }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
               <button className="btn" onClick={downloadImage}>
-                ⬇️ Скачать изображение
+                ⬇️ Скачать PNG
               </button>
               <button className="btn secondary" onClick={printMaterial}>
-                🖨️ Печать / PDF
+                🖨️ Печать / Сохранить PDF
               </button>
             </div>
+
+            <p style={{ color: "#718096", fontSize: 12, marginTop: 10 }}>
+              Для PDF нажми «Печать / Сохранить PDF», а в окне печати выбери
+              «Сохранить как PDF» и формат бумаги A4.
+            </p>
 
             {remaining !== null && (
               <p style={{ color: "#8290a5", fontSize: 13 }}>
