@@ -116,7 +116,8 @@ export async function POST(req: Request) {
       ? topic
       : categories[category];
 
-    let languageRule = "Для каждого элемента укажи название на русском и казахском языках.";
+    let languageRule =
+      "Для каждого элемента укажи название сначала на русском, затем на казахском языке.";
 
     if (language === "ru") {
       languageRule = "Названия только на русском языке.";
@@ -132,7 +133,8 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: "Ты методист дошкольного образования. Подбирай конкретные, понятные детям предметы и образы. Возвращай только JSON."
+          content:
+            "Ты методист дошкольного образования. Подбирай конкретные, понятные детям предметы и образы. Возвращай только JSON."
         },
         {
           role: "user",
@@ -144,7 +146,9 @@ ${languageRule}
 Верни JSON такого вида:
 {"items":[{"ru":"название на русском","kz":"название на казахском","visual":"short visual description in English"}]}
 
-Не повторяй элементы. Описания visual должны точно передавать внешний вид предмета.`
+Соблюдай порядок: сначала русское название, затем казахское.
+Не повторяй элементы.
+Описания visual должны точно передавать внешний вид предметов.`
         }
       ],
       temperature: 0.6,
@@ -154,7 +158,9 @@ ${languageRule}
     const parsed = JSON.parse(raw);
 
     if (!Array.isArray(parsed.items) || parsed.items.length !== total) {
-      throw new Error("Не удалось подготовить нужное количество элементов.");
+      throw new Error(
+        "Не удалось подготовить нужное количество элементов."
+      );
     }
 
     const items = parsed.items;
@@ -173,45 +179,69 @@ ${languageRule}
       ? "Black and white outline illustrations, thick clean contours, no gray shading, suitable for coloring."
       : "Bright, friendly, colorful preschool illustrations, simple recognizable shapes, attractive professional educational design.";
 
-    let layout = "Arrange the elements in a neat grid of separate equal-sized cards with white gutters and cut lines.";
+    let layout =
+      "Arrange all elements in a perfectly aligned grid of separate equal-sized cards with white gutters and clear cut lines.";
 
     if (kind === "poster") {
-      layout = "Create one large educational poster with a clear visual hierarchy and all requested subjects.";
+      layout =
+        "Create one large educational poster with a clear visual hierarchy and all requested subjects.";
     } else if (kind === "worksheet") {
-      layout = "Create a printable worksheet with large activity areas, simple visual examples and blank spaces for children's answers.";
+      layout =
+        "Create a printable worksheet with large activity areas, simple visual examples and blank spaces for children's answers.";
     } else if (kind === "coloring") {
-      layout = "Create a black-and-white coloring page with large separate outlined objects.";
+      layout =
+        "Create a black-and-white coloring page with large separate outlined objects.";
     } else if (kind === "craft") {
-      layout = "Create a printable cut-out craft template with large separate parts and clear cutting lines.";
+      layout =
+        "Create a printable cut-out craft template with large separate parts and clear cutting lines.";
     } else if (kind === "game" || kind === "puzzle") {
-      layout = "Create a printable game sheet with clearly separated large cells or pieces.";
+      layout =
+        "Create a printable game sheet with clearly separated large cells or pieces.";
     } else if (kind === "scheme") {
-      layout = "Create a clear educational visual scheme with connected sections and simple illustrations.";
+      layout =
+        "Create a clear educational visual scheme with connected sections and simple illustrations.";
     } else if (kind === "lapbook") {
-      layout = "Create separate printable lapbook elements: pockets, labels, mini-cards and folding pieces.";
+      layout =
+        "Create separate printable lapbook elements: pockets, labels, mini-cards and folding pieces.";
     }
 
-    const prompt = `Create a print-ready preschool educational ${kinds[kind]} for children aged ${age}.
+    const prompt = `Create a professional, print-ready preschool educational ${kinds[kind]} for children aged ${age}.
 
-Topic: ${subject}.
+TOPIC: ${subject}
+
 Include exactly these ${total} subjects in this order:
-${visuals.join("; ")}.
+${visuals.join("; ")}
 
 ${layout}
+
 ${styleRule}
 
-Use a clean white background and a portrait A4-style composition.
-Keep all elements inside the page with comfortable print margins.
-No watermark, no logo, no mockup, no hands, no desk.
-Do not render words, letters, labels or numbers.
-Use age-appropriate simple visuals.`;
+PRINT AND LAYOUT REQUIREMENTS:
+
+- Portrait A4-style composition.
+- Clean pure white background.
+- High-quality professional educational design.
+- Generous print margins on all sides.
+- All objects must fit completely inside the page.
+- For cards: perfectly aligned grid with equal-sized cards.
+- Every card must have consistent spacing and clearly visible cut lines.
+- Each card must contain one complete centered illustration.
+- No overlapping, cropped or duplicated objects.
+- Sharp contours and clear recognizable details.
+- Friendly cartoon-style illustrations suitable for preschool children.
+- Balanced composition with no unnecessary decorations.
+- Do not render words, letters, captions, labels, logos, watermarks or numbers.
+- No mockups, hands, desks or photographs.
+- Keep every important element inside the printable area.
+
+The result must look like a professionally designed educational printable, ready for an A4 printer.`;
 
     const imageResponse = await openai.images.generate({
       model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
       prompt,
       size: "1024x1536",
-      quality: "low",
-      output_format: "jpeg",
+      quality: "medium",
+      output_format: "png",
       n: 1,
     });
 
@@ -229,7 +259,7 @@ Use age-appropriate simple visuals.`;
       language,
       count: total,
       labels,
-      image: `data:image/jpeg;base64,${image}`,
+      image: `data:image/png;base64,${image}`,
       remaining: quota.remaining,
     });
 
@@ -238,7 +268,10 @@ Use age-appropriate simple visuals.`;
 
     if (error?.status === 429) {
       return NextResponse.json(
-        { error: "Недостаточно средств или превышен лимит OpenAI API. Проверь баланс." },
+        {
+          error:
+            "Недостаточно средств или превышен лимит OpenAI API. Проверь баланс."
+        },
         { status: 429 }
       );
     }
