@@ -11,25 +11,67 @@ type Material = {
   created_at: string;
 };
 
-const typeInfo: Record<string, { label: string; icon: string; className: string }> = {
-  cards: { label: "Карточки", icon: "🖍️", className: "cards" },
-  story: { label: "Сказки", icon: "📖", className: "story" },
-  game: { label: "Развивающие игры", icon: "🧩", className: "game" },
-  illustration: { label: "Иллюстрации", icon: "🎨", className: "illustration" },
-  lesson: { label: "Планы занятий", icon: "📝", className: "lesson" },
-  worksheet: { label: "Рабочие листы", icon: "📄", className: "worksheet" },
-  ksp: { label: "КСП", icon: "📚", className: "lesson" },
-  presentation: { label: "Презентации", icon: "🖥️", className: "presentation" },
-  material: { label: "Материалы", icon: "🌟", className: "other" },
+const typeInfo: Record<
+  string,
+  { label: string; icon: string; background: string }
+> = {
+  cards: {
+    label: "Карточки",
+    icon: "🖍️",
+    background: "linear-gradient(135deg, #ffe6c7, #f8dcec)",
+  },
+  story: {
+    label: "Сказки",
+    icon: "📖",
+    background: "linear-gradient(135deg, #dce8ff, #e9ddff)",
+  },
+  game: {
+    label: "Развивающие игры",
+    icon: "🧩",
+    background: "linear-gradient(135deg, #d8f3e5, #dcecff)",
+  },
+  illustration: {
+    label: "Иллюстрации",
+    icon: "🎨",
+    background: "linear-gradient(135deg, #ffe0e5, #fff0c9)",
+  },
+  lesson: {
+    label: "Планы занятий",
+    icon: "📝",
+    background: "linear-gradient(135deg, #dfeaff, #ddf3ed)",
+  },
+  worksheet: {
+    label: "Рабочие листы",
+    icon: "📄",
+    background: "linear-gradient(135deg, #fff0d5, #e8e2ff)",
+  },
+  ksp: {
+    label: "КСП",
+    icon: "📚",
+    background: "linear-gradient(135deg, #dfeaff, #ddf3ed)",
+  },
+  presentation: {
+    label: "Презентации",
+    icon: "🖥️",
+    background: "linear-gradient(135deg, #dcecff, #f9e2ed)",
+  },
+  material: {
+    label: "Материалы",
+    icon: "🌟",
+    background: "linear-gradient(135deg, #e8e8ff, #e1f5e8)",
+  },
 };
 
 function getType(kind: string | null) {
   const key = (kind || "material").toLowerCase();
-  return typeInfo[key] || {
-    label: kind || "Материал",
-    icon: "✨",
-    className: "other",
-  };
+
+  return (
+    typeInfo[key] || {
+      label: kind || "Материал",
+      icon: "✨",
+      background: "linear-gradient(135deg, #e8e8ff, #e1f5e8)",
+    }
+  );
 }
 
 export default function MaterialsManager({
@@ -182,6 +224,7 @@ export default function MaterialsManager({
         <span>
           Найдено материалов: <b>{visibleItems.length}</b>
         </span>
+
         {(query || filter !== "all") && (
           <button
             type="button"
@@ -210,14 +253,89 @@ export default function MaterialsManager({
               <article className="material" key={item.id}>
                 <Link
                   href={`/dashboard/materials/${item.id}`}
-                  className={`material-art ${type.className}`}
+                  className="material-art"
                   aria-label={`Открыть ${item.title}`}
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    width: "100%",
+                    height: "150px",
+                    minHeight: "150px",
+                    boxSizing: "border-box",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    background: type.background,
+                    textDecoration: "none",
+                    borderRadius: "18px 18px 0 0",
+                  }}
                 >
-                  <span className="art-decoration decoration-one" />
-                  <span className="art-decoration decoration-two" />
-                  <span className="art-icon">{type.icon}</span>
-                  <span className="art-label">{type.label}</span>
-                  <span className="art-arrow">↗</span>
+                  <span
+                    style={{
+                      position: "absolute",
+                      width: "130px",
+                      height: "130px",
+                      borderRadius: "50%",
+                      background: "#ffffff55",
+                      top: "-65px",
+                      left: "-30px",
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      position: "absolute",
+                      width: "100px",
+                      height: "100px",
+                      borderRadius: "50%",
+                      background: "#ffffff55",
+                      right: "-30px",
+                      bottom: "-50px",
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      fontSize: "66px",
+                      lineHeight: 1,
+                      filter: "drop-shadow(0 7px 5px #33445a30)",
+                    }}
+                  >
+                    {type.icon}
+                  </span>
+
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: "14px",
+                      bottom: "12px",
+                      zIndex: 2,
+                      padding: "6px 11px",
+                      borderRadius: "20px",
+                      background: "#ffffffd9",
+                      color: "#526b8e",
+                      fontSize: "10px",
+                      fontWeight: 900,
+                    }}
+                  >
+                    {type.label}
+                  </span>
+
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "12px",
+                      zIndex: 2,
+                      color: "#ffffff",
+                      fontSize: "24px",
+                      fontWeight: 900,
+                    }}
+                  >
+                    ↗
+                  </span>
                 </Link>
 
                 <div className="material-body">
@@ -266,14 +384,15 @@ export default function MaterialsManager({
                       </Link>
 
                       <p className="material-date">
-                        📅 {new Date(item.created_at).toLocaleDateString("ru-RU")}
+                        📅{" "}
+                        {new Date(item.created_at).toLocaleDateString("ru-RU")}
                       </p>
 
                       <Link
                         href={`/dashboard/materials/${item.id}`}
                         className="open-hint"
                       >
-                        Открыть материал <span>→</span>
+                        Открыть материал →
                       </Link>
 
                       <div className="card-actions">
@@ -294,9 +413,7 @@ export default function MaterialsManager({
                           }
                           disabled={busyId === item.id}
                         >
-                          {busyId === item.id
-                            ? "Удаляем..."
-                            : "🗑 Удалить"}
+                          {busyId === item.id ? "Удаляем..." : "🗑 Удалить"}
                         </button>
                       </div>
                     </>
@@ -425,6 +542,7 @@ export default function MaterialsManager({
         }
 
         .material {
+          min-width: 0;
           overflow: hidden;
           border: 2px solid #eeeaf0;
           border-radius: 21px;
@@ -439,101 +557,7 @@ export default function MaterialsManager({
         }
 
         .material-art {
-          position: relative;
-          display: flex;
-          min-height: 145px;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-          text-decoration: none;
-        }
-
-        .material-art.cards {
-          background: linear-gradient(135deg, #ffe8c9, #f8ddec);
-        }
-
-        .material-art.story {
-          background: linear-gradient(135deg, #e2eaff, #e9ddff);
-        }
-
-        .material-art.game {
-          background: linear-gradient(135deg, #d9f4e8, #e4f1ff);
-        }
-
-        .material-art.illustration {
-          background: linear-gradient(135deg, #ffe4e8, #fff0c9);
-        }
-
-        .material-art.lesson {
-          background: linear-gradient(135deg, #e2edff, #dff4f0);
-        }
-
-        .material-art.worksheet {
-          background: linear-gradient(135deg, #fff0d7, #e9e4ff);
-        }
-
-        .material-art.presentation {
-          background: linear-gradient(135deg, #dcecff, #f9e2ed);
-        }
-
-        .material-art.other {
-          background: linear-gradient(135deg, #e8e8ff, #e1f5e8);
-        }
-
-        .art-decoration {
-          position: absolute;
-          display: block;
-          border-radius: 50%;
-          background: #ffffff55;
-        }
-
-        .decoration-one {
-          width: 125px;
-          height: 125px;
-          top: -65px;
-          left: -30px;
-        }
-
-        .decoration-two {
-          width: 95px;
-          height: 95px;
-          right: -30px;
-          bottom: -48px;
-        }
-
-        .art-icon {
-          position: relative;
-          z-index: 1;
-          font-size: 61px;
-          filter: drop-shadow(0 6px 4px #33445a25);
-          transition: transform .2s;
-        }
-
-        .material-art:hover .art-icon {
-          transform: scale(1.12) rotate(-5deg);
-        }
-
-        .art-label {
-          position: absolute;
-          left: 14px;
-          bottom: 12px;
-          z-index: 1;
-          padding: 6px 10px;
-          border: 1px solid #ffffff99;
-          border-radius: 20px;
-          background: #ffffffb8;
-          color: #526b8e;
-          font-size: 9px;
-          font-weight: 1000;
-        }
-
-        .art-arrow {
-          position: absolute;
-          top: 13px;
-          right: 16px;
-          color: #ffffff;
-          font-size: 23px;
-          font-weight: 900;
+          color: inherit;
         }
 
         .material-body {
