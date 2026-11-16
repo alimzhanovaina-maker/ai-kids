@@ -72,19 +72,19 @@ export async function POST(req: Request) {
     if (!kinds[kind]) {
       return NextResponse.json({ error: "Выбери вид материала." }, { status: 400 });
     }
-
     if (
       category === "custom" &&
       (typeof topic !== "string" || !topic.trim())
     ) {
       return NextResponse.json({ error: "Введи собственную тему." }, { status: 400 });
     }
-
     if (category !== "custom" && !categories[category]) {
       return NextResponse.json({ error: "Выбери готовую категорию." }, { status: 400 });
     }
 
-    const total = Math.min(Math.max(Number(count) || 8, 2), 20);
+    // Each subject is generated as its own image. Keep the first version to 8
+    // subjects so the request stays within serverless time and response limits.
+    const total = Math.min(Math.max(Number(count) || 8, 2), 8);
 
     const { data: quotaData, error: quotaError } =
       await supabase.rpc("consume_generation");
@@ -106,15 +106,7 @@ export async function POST(req: Request) {
     }
 
     const openai = new OpenAI({ apiKey });
-    const subject =
-      category === "custom" ? topic.trim() : categories[category];
-
-    const languageRule =
-      language === "ru"
-        ? "Заполни ru. Поле kz тоже заполни точным переводом для внутренней структуры."
-        : language === "kz"
-          ? "Заполни kz. Поле ru тоже заполни точным переводом для внутренней структуры."
-          : "Заполни оба поля: ru на русском и kz на казахском.";
+    const subject = category === "custom" ? topic.trim() : categories[category];
 
     const listResponse = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
@@ -123,47 +115,45 @@ export async function POST(req: Request) {
         {
           role: "system",
           content: `
-Ты методист дошкольного образования и составитель дидактических наборов.
-Возвращай только корректный JSON. Не добавляй комментарии вне JSON.
-Все элементы должны быть конкретными, узнаваемыми и подходить детям указанного возраста.
+Ты методист дошкольного образования.
+Составляй списки конкретных, узнаваемых и подходящих детям объектов.
+Каждый объект должен отличаться от остальных по смыслу.
+Не используй синонимы или разные названия одного объекта.
+Возвращай только корректный JSON.
 `,
         },
         {
           role: "user",
           content: `
-Составь набор ровно из ${total} РАЗНЫХ объектов по теме: "${subject}".
-Возраст: ${age}. Тип: ${kinds[kind]}.
-${languageRule}
+Составь ровно ${total} уникальных объектов для материала "${kinds[kind]}".
+Тема: ${subject}. Возраст: ${age}.
 
-КРИТИЧЕСКИ ВАЖНО:
-- Каждый объект должен быть уникальным по смыслу.
-- Не повторяй один объект под другим названием.
-- Не используй варианты одного и того же объекта (например, кот и кошка считаются повтором).
-- Не добавляй фоновые предметы как отдельные элементы.
-- В поле visual дай короткое, конкретное описание одного объекта на английском языке.
-- Верни ровно ${total} элементов.
-
-JSON:
+Верни JSON:
 {
   "items": [
     {
       "ru": "Название на русском",
-      "kz": "Название на казахском",
-      "visual": "One specific object, its appearance, pose and distinguishing features"
+      "kz": "Атауы қазақша",
+      "visual": "Precise English description of one distinct subject"
     }
   ]
 }
+
+Правила:
+- Ровно ${total} объектов.
+- Не повторяй объект под другим названием.
+- Например, "заяц" и "кролик" для этого набора считаются слишком похожими — выбери только один.
+- Каждый visual описывает только один объект, без окружения и других существ.
+- Названия должны быть корректными переводами друг друга.
 `,
         },
       ],
-      temperature: 0.3,
+      temperature: 0.2,
     });
 
-    const raw = listResponse.choices[0]?.message?.content || "";
-    const parsed = JSON.parse(raw);
-
+    const parsed = JSON.parse(listResponse.choices[0]?.message?.content || "{}");
     if (!Array.isArray(parsed.items) || parsed.items.length !== total) {
-      throw new Error("Не удалось подготовить точное количество элементов. Попробуй ещё раз.");
+      throw new Error("Не удалось составить точный список объектов. Попробуй ещё раз.");
     }
 
     const items: Array<{ ru: string; kz: string; visual: string }> =
@@ -174,12 +164,12 @@ JSON:
       }));
 
     if (items.some((item) => !item.ru || !item.kz || !item.visual)) {
-      throw new Error("В списке есть элемент без названия или описания. Попробуй ещё раз.");
+      throw new Error("В списке есть объект без названия или описания. Попробуй ещё раз.");
     }
 
-    const uniqueRu = new Set(items.map((item) => normalizeName(item.ru)));
-    if (uniqueRu.size !== total) {
-      throw new Error("Нейросеть повторила некоторые элементы. Нажми «Создать» ещё раз для нового набора.");
+    const unique = new Set(items.map((item) => normalizeName(item.ru)));
+    if (unique.size !== total) {
+      throw new Error("В списке обнаружились повторы. Нажми «Создать» ещё раз.");
     }
 
     const labels = items.map((item) => {
@@ -188,125 +178,54 @@ JSON:
       return `${item.ru} / ${item.kz}`;
     });
 
-    const columns =
-      total <= 4 ? 2 :
-      total <= 9 ? 3 :
-      total <= 16 ? 4 : 5;
-    const rows = Math.ceil(total / columns);
-
     const styleRule =
       style === "mono" || kind === "coloring"
-        ? `
-Black and white coloring-book line art.
-Thick, smooth, clean black outlines.
-Pure white background, no gray shading, no gradients.
-Large simple shapes with generous empty areas for coloring.
-`
-        : `
-Bright, warm, cheerful preschool illustration style.
-Cute but anatomically recognizable objects and animals.
-Consistent illustration style, scale, lighting and detail across all cards.
-Clean colors, crisp edges, gentle minimal shadows.
-`;
+        ? "Black and white coloring-book line art, thick clean black outlines, pure white background, no gray shading, simple large shapes."
+        : "Bright friendly preschool storybook illustration, cheerful balanced colors, clean edges, soft minimal shadow, recognizable natural anatomy.";
 
-    let layout = `
-PRINTABLE CARD SHEET GRID:
-- Use exactly ${rows} rows and ${columns} columns.
-- There must be exactly ${total} cards, not ${total + 1}, not ${total - 1}.
-- Fill cells from left to right, top to bottom.
-- Each cell contains exactly ONE complete subject.
-- Use the same card size, same border thickness and same inner margins.
-- Keep clear white gutters and thin dotted cut lines between cards.
-- Do not add a title card, legend, extra icon, decoration or empty sample card.
-- If the final row has fewer cards, leave the remaining cell area completely blank.
-- Never repeat a subject.
-`;
+    // Generate each subject separately. The browser places exactly one image
+    // into each card, so the image model cannot add extra cards to the sheet.
+    const illustrations: string[] = [];
+    const batchSize = 3;
 
-    if (kind === "poster") {
-      layout = `
-Create one educational poster with exactly ${total} requested subjects.
-Arrange them in a balanced ${rows}-row by ${columns}-column visual grid.
-Keep all subjects separate, large and easy to recognize.
-Do not add extra subjects or a title.
+    for (let start = 0; start < items.length; start += batchSize) {
+      const batch = items.slice(start, start + batchSize);
+      const generated = await Promise.all(
+        batch.map(async (item) => {
+          const prompt = `
+Create ONE isolated educational illustration for a preschool printable.
+The only subject in the image must be: ${item.visual}.
+Subject label for meaning only: ${item.ru}.
+Age group: ${age}.
+
+Style: ${styleRule}
+
+Composition:
+- Show exactly one complete subject, centered.
+- Entire subject must be visible with generous empty margin around it.
+- Plain pure white background.
+- No other animals, people, objects, scenery, props or decorations.
+- No words, letters, numbers, labels, captions, watermark or logo.
+- No border, no card frame, no grid, no collage, no multiple views.
+- Square composition, crisp high-quality illustration.
 `;
-    } else if (kind === "worksheet") {
-      layout = `
-Create one preschool worksheet with exactly ${total} numbered activity spaces arranged in ${rows} rows and ${columns} columns.
-Each space must relate to one requested subject.
-Leave clear blank areas for a child to draw, trace or write.
-Do not add extra tasks or decorative objects.
-`;
-    } else if (kind === "coloring") {
-      layout = `
-Create one printable coloring sheet with exactly ${total} separate outlined subjects.
-Arrange them in ${rows} rows and ${columns} columns.
-Each subject appears once only, with thick black outlines and large white coloring areas.
-`;
-    } else if (kind === "craft" || kind === "lapbook") {
-      layout = `
-Create a printable cut-and-assemble sheet with exactly ${total} requested components.
-Arrange components in a clean ${rows} by ${columns} grid.
-Keep every component separate, fully visible and surrounded by cutting guides.
-Do not add extra components.
-`;
-    } else if (kind === "game" || kind === "puzzle" || kind === "cards") {
-      layout = `
-Create a printable set of exactly ${total} separate cards.
-Arrange them in exactly ${rows} rows and ${columns} columns.
-Every card contains one and only one requested subject.
-Use equal-sized rounded rectangles, consistent margins and subtle dotted cut lines.
-No extra cards, no duplicate subjects, no title panel.
-`;
-    } else if (kind === "scheme") {
-      layout = `
-Create one clear educational scheme containing exactly ${total} requested subjects.
-Arrange the subjects in ${rows} rows and ${columns} columns with simple visual connections.
-Do not add any extra objects or repeated subjects.
-`;
+          const result = await openai.images.generate({
+            model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
+            prompt,
+            size: "1024x1024",
+            quality: "low",
+            output_format: "jpeg",
+            n: 1,
+          });
+          const b64 = result.data?.[0]?.b64_json;
+          if (!b64) {
+            throw new Error(`Не удалось создать иллюстрацию: ${item.ru}.`);
+          }
+          return `data:image/jpeg;base64,${b64}`;
+        })
+      );
+      illustrations.push(...generated);
     }
-
-    const subjectList = items
-      .map((item, index) => `${index + 1}. ${item.visual}`)
-      .join("\n");
-
-    const prompt = `
-Create a high-quality, print-ready preschool educational ${kinds[kind]}.
-Topic: ${subject}.
-Target age: ${age}.
-
-EXACT SUBJECT LIST — FOLLOW THIS LIST ONE-TO-ONE:
-${subjectList}
-
-${layout}
-
-VISUAL STYLE:
-${styleRule}
-
-A4 PRINT COMPOSITION:
-- Portrait A4 page, 2:3 portrait image ratio.
-- White page background.
-- Keep all cards and illustrations inside safe print margins.
-- Nothing may be cropped, clipped or overlap another card.
-- Keep the grid centered and balanced on the page.
-- Clear, consistent cut guides.
-- High contrast and crisp edges.
-- No mockup, no desk, no hands, no photo, no watermark, no logo.
-- Do not draw any words, letters, captions, labels or numbers.
-- Do not invent, omit, merge or duplicate subjects.
-- The number of visible cards must be exactly ${total}.
-`;
-
-    const imageResponse = await openai.images.generate({
-      model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
-      prompt,
-      size: "1024x1536",
-      quality: "medium",
-      output_format: "png",
-      n: 1,
-    });
-
-    const image = imageResponse.data?.[0]?.b64_json;
-    if (!image) throw new Error("OpenAI не вернул изображение.");
 
     return NextResponse.json({
       success: true,
@@ -316,14 +235,9 @@ A4 PRINT COMPOSITION:
       language,
       count: total,
       labels,
-      image: `data:image/png;base64,${image}`,
+      illustrations,
       remaining: quota.remaining,
-      print: {
-        paper: "A4",
-        orientation: "portrait",
-        rows,
-        columns,
-      },
+      print: { paper: "A4", orientation: "portrait" },
     });
   } catch (error: any) {
     console.error("VISUAL GENERATION ERROR:", error);
