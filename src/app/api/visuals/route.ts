@@ -32,6 +32,10 @@ const categories: Record<string, string> = {
   safety: "Правила безопасности",
 };
 
+function normalizeName(value: string) {
+  return value.trim().toLocaleLowerCase().replace(/[ё]/g, "е").replace(/\s+/g, " ");
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -66,27 +70,18 @@ export async function POST(req: Request) {
     } = body;
 
     if (!kinds[kind]) {
-      return NextResponse.json(
-        { error: "Выбери вид материала." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Выбери вид материала." }, { status: 400 });
     }
 
     if (
       category === "custom" &&
       (typeof topic !== "string" || !topic.trim())
     ) {
-      return NextResponse.json(
-        { error: "Введи собственную тему." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Введи собственную тему." }, { status: 400 });
     }
 
     if (category !== "custom" && !categories[category]) {
-      return NextResponse.json(
-        { error: "Выбери готовую категорию." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Выбери готовую категорию." }, { status: 400 });
     }
 
     const total = Math.min(Math.max(Number(count) || 8, 2), 20);
@@ -103,7 +98,6 @@ export async function POST(req: Request) {
     }
 
     const quota = Array.isArray(quotaData) ? quotaData[0] : quotaData;
-
     if (!quota?.allowed) {
       return NextResponse.json(
         { error: "Лимит генераций исчерпан. Попробуй позже." },
@@ -115,14 +109,12 @@ export async function POST(req: Request) {
     const subject =
       category === "custom" ? topic.trim() : categories[category];
 
-    let languageRule =
-      "Для каждого элемента укажи название на русском и казахском языках.";
-    if (language === "ru") {
-      languageRule = "Названия только на русском языке.";
-    }
-    if (language === "kz") {
-      languageRule = "Названия только на казахском языке.";
-    }
+    const languageRule =
+      language === "ru"
+        ? "Заполни ru. Поле kz тоже заполни точным переводом для внутренней структуры."
+        : language === "kz"
+          ? "Заполни kz. Поле ru тоже заполни точным переводом для внутренней структуры."
+          : "Заполни оба поля: ru на русском и kz на казахском.";
 
     const listResponse = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
@@ -131,217 +123,177 @@ export async function POST(req: Request) {
         {
           role: "system",
           content: `
-Ты профессиональный методист дошкольного образования.
-Подбирай конкретные, узнаваемые и понятные детям 3–6 лет образы.
-Не повторяй предметы.
-Не используй сложные и абстрактные понятия.
-Возвращай только корректный JSON.
-          `,
+Ты методист дошкольного образования и составитель дидактических наборов.
+Возвращай только корректный JSON. Не добавляй комментарии вне JSON.
+Все элементы должны быть конкретными, узнаваемыми и подходить детям указанного возраста.
+`,
         },
         {
           role: "user",
           content: `
-Подготовь ровно ${total} разных элементов.
-
-Вид материала: ${kinds[kind]}.
-Тема: ${subject}.
-Возраст детей: ${age}.
-
+Составь набор ровно из ${total} РАЗНЫХ объектов по теме: "${subject}".
+Возраст: ${age}. Тип: ${kinds[kind]}.
 ${languageRule}
 
-Верни JSON следующего вида:
+КРИТИЧЕСКИ ВАЖНО:
+- Каждый объект должен быть уникальным по смыслу.
+- Не повторяй один объект под другим названием.
+- Не используй варианты одного и того же объекта (например, кот и кошка считаются повтором).
+- Не добавляй фоновые предметы как отдельные элементы.
+- В поле visual дай короткое, конкретное описание одного объекта на английском языке.
+- Верни ровно ${total} элементов.
 
+JSON:
 {
   "items": [
     {
       "ru": "Название на русском",
       "kz": "Название на казахском",
-      "visual": "Detailed visual description in English"
+      "visual": "One specific object, its appearance, pose and distinguishing features"
     }
   ]
 }
-
-Требования:
-1. Ровно ${total} элементов.
-2. Все элементы разные.
-3. Названия должны соответствовать теме.
-4. Описания visual должны точно описывать внешний вид.
-5. Не добавляй лишних элементов.
-          `,
+`,
         },
       ],
-      temperature: 0.6,
+      temperature: 0.3,
     });
 
     const raw = listResponse.choices[0]?.message?.content || "";
     const parsed = JSON.parse(raw);
 
     if (!Array.isArray(parsed.items) || parsed.items.length !== total) {
-      throw new Error(
-        "Не удалось подготовить нужное количество элементов."
-      );
+      throw new Error("Не удалось подготовить точное количество элементов. Попробуй ещё раз.");
     }
 
-    const items = parsed.items;
+    const items: Array<{ ru: string; kz: string; visual: string }> =
+      parsed.items.map((item: any) => ({
+        ru: String(item.ru || "").trim(),
+        kz: String(item.kz || "").trim(),
+        visual: String(item.visual || "").trim(),
+      }));
 
-    if (
-      items.some(
-        (item: any) =>
-          typeof item.ru !== "string" ||
-          typeof item.kz !== "string"
-      )
-    ) {
-      throw new Error("Ошибка в названиях элементов.");
+    if (items.some((item) => !item.ru || !item.kz || !item.visual)) {
+      throw new Error("В списке есть элемент без названия или описания. Попробуй ещё раз.");
     }
 
-    const labels = items.map((item: any) => {
+    const uniqueRu = new Set(items.map((item) => normalizeName(item.ru)));
+    if (uniqueRu.size !== total) {
+      throw new Error("Нейросеть повторила некоторые элементы. Нажми «Создать» ещё раз для нового набора.");
+    }
+
+    const labels = items.map((item) => {
       if (language === "ru") return item.ru;
       if (language === "kz") return item.kz;
       return `${item.ru} / ${item.kz}`;
     });
 
-    const visuals = items.map((item: any) =>
-      typeof item.visual === "string" && item.visual.trim()
-        ? item.visual
-        : item.ru
-    );
+    const columns =
+      total <= 4 ? 2 :
+      total <= 9 ? 3 :
+      total <= 16 ? 4 : 5;
+    const rows = Math.ceil(total / columns);
 
     const styleRule =
       style === "mono" || kind === "coloring"
         ? `
-Black and white outline illustrations.
-Thick, smooth, clean black contours.
-Pure white background.
-No gray shading.
-No gradients.
-Large empty areas for coloring.
-Suitable for preschool children.
-        `
+Black and white coloring-book line art.
+Thick, smooth, clean black outlines.
+Pure white background, no gray shading, no gradients.
+Large simple shapes with generous empty areas for coloring.
+`
         : `
-Bright, colorful, cheerful preschool illustrations.
-Beautiful harmonious color palette.
-Cute friendly cartoon characters.
-Soft attractive colors.
-Clear recognizable shapes.
-Professional children's educational illustration style.
-        `;
+Bright, warm, cheerful preschool illustration style.
+Cute but anatomically recognizable objects and animals.
+Consistent illustration style, scale, lighting and detail across all cards.
+Clean colors, crisp edges, gentle minimal shadows.
+`;
 
     let layout = `
-Arrange all elements in a perfectly aligned grid.
-Every card must have exactly the same size and equal spacing.
-Separate cards with clear cutting lines.
-Each card contains one complete illustration on a clean white background.
-Use rounded rectangular borders.
-Show every element fully without cropping.
-    `;
+PRINTABLE CARD SHEET GRID:
+- Use exactly ${rows} rows and ${columns} columns.
+- There must be exactly ${total} cards, not ${total + 1}, not ${total - 1}.
+- Fill cells from left to right, top to bottom.
+- Each cell contains exactly ONE complete subject.
+- Use the same card size, same border thickness and same inner margins.
+- Keep clear white gutters and thin dotted cut lines between cards.
+- Do not add a title card, legend, extra icon, decoration or empty sample card.
+- If the final row has fewer cards, leave the remaining cell area completely blank.
+- Never repeat a subject.
+`;
 
     if (kind === "poster") {
       layout = `
-Create one large educational poster.
-Use a clear visual hierarchy.
-Place all requested subjects harmoniously.
-Make the illustrations large and easy to recognize.
-      `;
+Create one educational poster with exactly ${total} requested subjects.
+Arrange them in a balanced ${rows}-row by ${columns}-column visual grid.
+Keep all subjects separate, large and easy to recognize.
+Do not add extra subjects or a title.
+`;
+    } else if (kind === "worksheet") {
+      layout = `
+Create one preschool worksheet with exactly ${total} numbered activity spaces arranged in ${rows} rows and ${columns} columns.
+Each space must relate to one requested subject.
+Leave clear blank areas for a child to draw, trace or write.
+Do not add extra tasks or decorative objects.
+`;
+    } else if (kind === "coloring") {
+      layout = `
+Create one printable coloring sheet with exactly ${total} separate outlined subjects.
+Arrange them in ${rows} rows and ${columns} columns.
+Each subject appears once only, with thick black outlines and large white coloring areas.
+`;
+    } else if (kind === "craft" || kind === "lapbook") {
+      layout = `
+Create a printable cut-and-assemble sheet with exactly ${total} requested components.
+Arrange components in a clean ${rows} by ${columns} grid.
+Keep every component separate, fully visible and surrounded by cutting guides.
+Do not add extra components.
+`;
+    } else if (kind === "game" || kind === "puzzle" || kind === "cards") {
+      layout = `
+Create a printable set of exactly ${total} separate cards.
+Arrange them in exactly ${rows} rows and ${columns} columns.
+Every card contains one and only one requested subject.
+Use equal-sized rounded rectangles, consistent margins and subtle dotted cut lines.
+No extra cards, no duplicate subjects, no title panel.
+`;
+    } else if (kind === "scheme") {
+      layout = `
+Create one clear educational scheme containing exactly ${total} requested subjects.
+Arrange the subjects in ${rows} rows and ${columns} columns with simple visual connections.
+Do not add any extra objects or repeated subjects.
+`;
     }
 
-    if (kind === "worksheet") {
-      layout = `
-Create a children's educational worksheet.
-Include large activity areas and visual examples.
-Leave empty spaces for children's answers.
-Use simple visual tasks.
-      `;
-    }
-
-    if (kind === "coloring") {
-      layout = `
-Create a black-and-white coloring page.
-Use large separate outlined objects.
-Make all contours thick and clear.
-Leave enough white space for coloring.
-      `;
-    }
-
-    if (kind === "craft") {
-      layout = `
-Create a printable craft template.
-Separate all parts clearly.
-Add visible cutting lines.
-Make pieces large and easy to cut out.
-      `;
-    }
-
-    if (kind === "game" || kind === "puzzle") {
-      layout = `
-Create a printable educational game.
-Separate every playing element clearly.
-Use large cells or puzzle pieces.
-Make the game easy to cut out and assemble.
-      `;
-    }
-
-    if (kind === "scheme") {
-      layout = `
-Create a clear educational visual scheme.
-Use connected sections.
-Add simple recognizable illustrations.
-Maintain an easy-to-follow visual structure.
-      `;
-    }
-
-    if (kind === "lapbook") {
-      layout = `
-Create printable lapbook components.
-Include pockets, mini-cards, labels and folding elements.
-Separate every component clearly.
-Add cutting and folding guides.
-      `;
-    }
+    const subjectList = items
+      .map((item, index) => `${index + 1}. ${item.visual}`)
+      .join("\n");
 
     const prompt = `
-Create a professional, beautiful, print-ready preschool educational
-${kinds[kind]} for children aged ${age}.
+Create a high-quality, print-ready preschool educational ${kinds[kind]}.
+Topic: ${subject}.
+Target age: ${age}.
 
-TOPIC:
-${subject}
+EXACT SUBJECT LIST — FOLLOW THIS LIST ONE-TO-ONE:
+${subjectList}
 
-EXACT SUBJECTS:
-Include exactly these ${total} subjects in the following order:
-
-${visuals.map((v: string, i: number) => `${i + 1}. ${v}`).join("\n")}
-
-LAYOUT:
 ${layout}
 
-ILLUSTRATION STYLE:
+VISUAL STYLE:
 ${styleRule}
 
-PRINT REQUIREMENTS:
-- Portrait A4 page composition.
-- Aspect ratio approximately 2:3.
-- Pure white printable background.
-- Professional educational design.
-- Generous safe margins.
-- All elements must fit completely inside the page.
-- No cropped objects.
-- No overlapping illustrations.
-- Consistent proportions.
-- Clean, sharp contours.
-- High visual clarity.
-- Balanced composition.
-- Large recognizable objects.
-- Child-friendly illustrations.
-- No unnecessary decorative elements.
-
-IMPORTANT:
-- Include exactly ${total} requested subjects.
-- Do not duplicate any subject.
-- Do not invent additional objects.
-- Do not render words, letters, captions, labels or numbers.
-- No watermark, logo, mockup, hands, desk or photographs.
-- No text of any kind.
-
-The result must look like a professionally designed educational printable ready for use in a kindergarten classroom.
+A4 PRINT COMPOSITION:
+- Portrait A4 page, 2:3 portrait image ratio.
+- White page background.
+- Keep all cards and illustrations inside safe print margins.
+- Nothing may be cropped, clipped or overlap another card.
+- Keep the grid centered and balanced on the page.
+- Clear, consistent cut guides.
+- High contrast and crisp edges.
+- No mockup, no desk, no hands, no photo, no watermark, no logo.
+- Do not draw any words, letters, captions, labels or numbers.
+- Do not invent, omit, merge or duplicate subjects.
+- The number of visible cards must be exactly ${total}.
 `;
 
     const imageResponse = await openai.images.generate({
@@ -354,9 +306,7 @@ The result must look like a professionally designed educational printable ready 
     });
 
     const image = imageResponse.data?.[0]?.b64_json;
-    if (!image) {
-      throw new Error("OpenAI не вернул изображение.");
-    }
+    if (!image) throw new Error("OpenAI не вернул изображение.");
 
     return NextResponse.json({
       success: true,
@@ -368,20 +318,22 @@ The result must look like a professionally designed educational printable ready 
       labels,
       image: `data:image/png;base64,${image}`,
       remaining: quota.remaining,
+      print: {
+        paper: "A4",
+        orientation: "portrait",
+        rows,
+        columns,
+      },
     });
   } catch (error: any) {
     console.error("VISUAL GENERATION ERROR:", error);
 
     if (error?.status === 429) {
       return NextResponse.json(
-        {
-          error:
-            "Недостаточно средств или превышен лимит OpenAI API. Проверь баланс.",
-        },
+        { error: "Недостаточно средств или превышен лимит OpenAI API. Проверь баланс." },
         { status: 429 }
       );
     }
-
     if (error?.status === 401) {
       return NextResponse.json(
         { error: "Проверь API-ключ OpenAI в Vercel." },
