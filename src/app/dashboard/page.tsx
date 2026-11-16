@@ -64,7 +64,7 @@ export default async function Dashboard() {
       <section className="bottom"><span>🌼</span><div><b>Каждая большая идея начинается с маленького шага!</b><p>AI KIDS поможет подготовить материалы для занятий.</p></div><Link href="/studio">В мастерскую →</Link></section>
       <footer><b>✦ AI KIDS</b><span>Большие идеи для маленьких открытий</span><span>Қазақша · Русский</span></footer>
 
-      <style jsx>{`
+      <style>{`
         .dashboard{max-width:1180px;margin:0 auto;padding:20px 28px 35px;color:#294363;font-family:Nunito,system-ui,sans-serif}
         .header{min-height:65px;display:flex;align-items:center;justify-content:space-between;gap:18px}
         .brand{display:flex;align-items:center;gap:9px;font-size:23px;font-weight:1000;white-space:nowrap}.brand>span:last-child{color:#f4a64e}
