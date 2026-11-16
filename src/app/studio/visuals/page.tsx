@@ -65,10 +65,9 @@ async function composeA4Sheet(illustrations: string[], labels: string[]) {
   const gapX = 28;
   const gapY = 28;
   const cardW = (canvas.width - marginX * 2 - gapX * (columns - 1)) / columns;
-  const cardH = Math.min(
-    470,
-    (canvas.height - marginY * 2 - gapY * (rows - 1)) / rows
-  );
+  // Use the full printable page height instead of leaving a large blank area.
+  const cardH =
+    (canvas.height - marginY * 2 - gapY * (rows - 1)) / rows;
   const totalGridH = rows * cardH + (rows - 1) * gapY;
   const startY = Math.max(marginY, (canvas.height - totalGridH) / 2);
   const loaded = await Promise.all(illustrations.map(loadImage));
@@ -89,10 +88,10 @@ async function composeA4Sheet(illustrations: string[], labels: string[]) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const labelArea = 74;
-    const imagePadding = 24;
+    const labelArea = 104;
+    const imagePadding = Math.max(26, Math.round(cardW * 0.055));
     const imageBoxW = cardW - imagePadding * 2;
-    const imageBoxH = cardH - labelArea - imagePadding * 1.5;
+    const imageBoxH = cardH - labelArea - imagePadding * 1.35;
     const scale = Math.min(imageBoxW / img.width, imageBoxH / img.height);
     const drawW = img.width * scale;
     const drawH = img.height * scale;
@@ -101,12 +100,21 @@ async function composeA4Sheet(illustrations: string[], labels: string[]) {
 
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
+    // Center the title in the card, with enough space for bilingual labels.
     const label = labels[index] || `Элемент ${index + 1}`;
     ctx.fillStyle = "#294363";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "bold 24px Arial, sans-serif";
-    wrapCanvasText(ctx, label, x + 18, y + cardH - 54, cardW - 36, 27, 2);
+    ctx.font = `bold ${Math.max(27, Math.min(36, Math.round(cardW * 0.065)))}px Arial, sans-serif`;
+    wrapCanvasText(
+      ctx,
+      label,
+      x + cardW / 2,
+      y + cardH - labelArea / 2,
+      cardW - 48,
+      36,
+      2
+    );
     ctx.restore();
   });
 
@@ -353,7 +361,7 @@ export default function VisualStudio() {
 
           <div className="print-note">
             <span>📄</span>
-            <div><b>Лист A4 с точным количеством карточек</b><small>Каждая иллюстрация создаётся отдельно, а сетка собирается автоматически.</small></div>
+            <div><b>Крупные карточки на весь лист A4</b><small>Подписи по центру, увеличенный размер и аккуратные линии для вырезания.</small></div>
           </div>
 
           <button onClick={generate} disabled={busy || (category === "custom" && !topic.trim())} className="create-button">
