@@ -11,54 +11,51 @@ type Material = {
   created_at: string;
 };
 
-const typeInfo: Record<
-  string,
-  { label: string; icon: string; background: string }
-> = {
+const types: Record<string, { label: string; icon: string; bg: string }> = {
   cards: {
     label: "Карточки",
     icon: "🖍️",
-    background: "linear-gradient(135deg, #ffe6c7, #f8dcec)",
+    bg: "linear-gradient(135deg,#ffe6c7,#f8dcec)",
   },
   story: {
     label: "Сказки",
     icon: "📖",
-    background: "linear-gradient(135deg, #dce8ff, #e9ddff)",
+    bg: "linear-gradient(135deg,#dce8ff,#e9ddff)",
   },
   game: {
     label: "Развивающие игры",
     icon: "🧩",
-    background: "linear-gradient(135deg, #d8f3e5, #dcecff)",
+    bg: "linear-gradient(135deg,#d8f3e5,#dcecff)",
   },
   illustration: {
     label: "Иллюстрации",
     icon: "🎨",
-    background: "linear-gradient(135deg, #ffe0e5, #fff0c9)",
+    bg: "linear-gradient(135deg,#ffe0e5,#fff0c9)",
   },
   lesson: {
     label: "Планы занятий",
     icon: "📝",
-    background: "linear-gradient(135deg, #dfeaff, #ddf3ed)",
+    bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)",
   },
   worksheet: {
     label: "Рабочие листы",
     icon: "📄",
-    background: "linear-gradient(135deg, #fff0d5, #e8e2ff)",
+    bg: "linear-gradient(135deg,#fff0d5,#e8e2ff)",
   },
   ksp: {
     label: "КСП",
     icon: "📚",
-    background: "linear-gradient(135deg, #dfeaff, #ddf3ed)",
+    bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)",
   },
   presentation: {
     label: "Презентации",
     icon: "🖥️",
-    background: "linear-gradient(135deg, #dcecff, #f9e2ed)",
+    bg: "linear-gradient(135deg,#dcecff,#f9e2ed)",
   },
   material: {
     label: "Материалы",
     icon: "🌟",
-    background: "linear-gradient(135deg, #e8e8ff, #e1f5e8)",
+    bg: "linear-gradient(135deg,#e8e8ff,#e1f5e8)",
   },
 };
 
@@ -66,10 +63,10 @@ function getType(kind: string | null) {
   const key = (kind || "material").toLowerCase();
 
   return (
-    typeInfo[key] || {
+    types[key] || {
       label: kind || "Материал",
       icon: "✨",
-      background: "linear-gradient(135deg, #e8e8ff, #e1f5e8)",
+      bg: "linear-gradient(135deg,#e8e8ff,#e1f5e8)",
     }
   );
 }
@@ -93,17 +90,16 @@ export default function MaterialsManager({
   );
 
   const visibleItems = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
+    const search = query.trim().toLocaleLowerCase();
 
     return items.filter((item) => {
-      const matchesText =
-        !normalized ||
-        item.title.toLocaleLowerCase().includes(normalized);
+      const matchesSearch =
+        !search || item.title.toLocaleLowerCase().includes(search);
 
-      const matchesKind =
+      const matchesFilter =
         filter === "all" || (item.kind || "material") === filter;
 
-      return matchesText && matchesKind;
+      return matchesSearch && matchesFilter;
     });
   }, [items, query, filter]);
 
@@ -128,7 +124,7 @@ export default function MaterialsManager({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Не удалось переименовать материал.");
+        throw new Error(data.error || "Не удалось изменить название.");
       }
 
       setItems((current) =>
@@ -151,13 +147,7 @@ export default function MaterialsManager({
   }
 
   async function deleteMaterial(id: string, title: string) {
-    if (
-      !window.confirm(
-        `Удалить материал «${title}»? Это действие нельзя отменить.`
-      )
-    ) {
-      return;
-    }
+    if (!window.confirm(`Удалить материал «${title}»?`)) return;
 
     setBusyId(id);
     setNotice("");
@@ -186,22 +176,16 @@ export default function MaterialsManager({
 
   return (
     <div className="manager">
-      <div className="manager-tools">
-        <label className="search-box">
+      <div className="tools">
+        <label className="search">
           <span>🔎</span>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Найти материал по названию..."
           />
-
           {query && (
-            <button
-              className="clear-search"
-              onClick={() => setQuery("")}
-              type="button"
-              aria-label="Очистить поиск"
-            >
+            <button type="button" onClick={() => setQuery("")}>
               ×
             </button>
           )}
@@ -210,25 +194,21 @@ export default function MaterialsManager({
         <select
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
-          aria-label="Фильтр по типу материала"
+          aria-label="Фильтр по типу"
         >
           <option value="all">Все типы</option>
           {kinds.map((kind) => (
-            <option value={kind} key={kind}>
+            <option key={kind} value={kind}>
               {getType(kind).label}
             </option>
           ))}
         </select>
       </div>
 
-      <div className="results-line">
-        <span>
-          Найдено материалов: <b>{visibleItems.length}</b>
-        </span>
-
+      <div className="results">
+        Найдено материалов: <b>{visibleItems.length}</b>
         {(query || filter !== "all") && (
           <button
-            type="button"
             onClick={() => {
               setQuery("");
               setFilter("all");
@@ -239,11 +219,7 @@ export default function MaterialsManager({
         )}
       </div>
 
-      {notice && (
-        <p className="manager-notice" role="status">
-          {notice}
-        </p>
-      )}
+      {notice && <p className="notice">{notice}</p>}
 
       {visibleItems.length > 0 ? (
         <div className="materials">
@@ -254,25 +230,20 @@ export default function MaterialsManager({
               <article className="material" key={item.id}>
                 <Link
                   href={`/dashboard/materials/${item.id}`}
-                  className="material-art"
+                  className="cover"
+                  style={{ background: type.bg }}
                   aria-label={`Открыть ${item.title}`}
-                  style={{ background: type.background }}
                 >
-                  <span className="decoration decoration-one" />
-                  <span className="decoration decoration-two" />
+                  <span className="circle circle-one" />
+                  <span className="circle circle-two" />
 
-                  <span className="fallback-icon">
-                    {type.icon}
-                  </span>
+                  <span className="cover-icon">{type.icon}</span>
 
-                  <span className="art-label">
-                    {type.label}
-                  </span>
-
-                  <span className="art-arrow">↗</span>
+                  <span className="cover-label">{type.label}</span>
+                  <span className="cover-arrow">↗</span>
                 </Link>
 
-                <div className="material-body">
+                <div className="body">
                   <span className="type-label">
                     {type.icon} {type.label}
                   </span>
@@ -280,17 +251,15 @@ export default function MaterialsManager({
                   {editingId === item.id ? (
                     <div className="edit-area">
                       <label>Новое название</label>
-
                       <input
                         value={editTitle}
                         onChange={(event) =>
                           setEditTitle(event.target.value)
                         }
                         maxLength={100}
-                        aria-label="Новое название материала"
                       />
 
-                      <div className="card-actions">
+                      <div className="actions">
                         <button
                           onClick={() => renameMaterial(item.id)}
                           disabled={busyId === item.id}
@@ -301,7 +270,7 @@ export default function MaterialsManager({
                         </button>
 
                         <button
-                          className="muted-button"
+                          className="muted"
                           onClick={() => setEditingId(null)}
                           disabled={busyId === item.id}
                         >
@@ -313,24 +282,24 @@ export default function MaterialsManager({
                     <>
                       <Link
                         href={`/dashboard/materials/${item.id}`}
-                        className="material-title"
+                        className="title"
                       >
                         {item.title}
                       </Link>
 
-                      <p className="material-date">
+                      <p className="date">
                         📅{" "}
                         {new Date(item.created_at).toLocaleDateString("ru-RU")}
                       </p>
 
                       <Link
                         href={`/dashboard/materials/${item.id}`}
-                        className="open-hint"
+                        className="open-link"
                       >
                         Открыть материал →
                       </Link>
 
-                      <div className="card-actions">
+                      <div className="actions">
                         <button
                           onClick={() => {
                             setEditingId(item.id);
@@ -342,7 +311,7 @@ export default function MaterialsManager({
                         </button>
 
                         <button
-                          className="delete-button"
+                          className="delete"
                           onClick={() =>
                             deleteMaterial(item.id, item.title)
                           }
@@ -361,21 +330,18 @@ export default function MaterialsManager({
           })}
         </div>
       ) : (
-        <div className="no-results">
+        <div className="empty">
           <span>🔍</span>
-
           <b>
             {items.length
               ? "Ничего не найдено"
               : "Пока нет сохранённых материалов"}
           </b>
-
           <p>
             {items.length
-              ? "Попробуй изменить запрос или выбрать другой тип."
+              ? "Измени запрос или выбери другой тип."
               : "Создай материал в мастерской и сохрани его здесь."}
           </p>
-
           {items.length > 0 && (
             <button
               onClick={() => {
@@ -394,13 +360,13 @@ export default function MaterialsManager({
           width: 100%;
         }
 
-        .manager-tools {
+        .tools {
           display: flex;
           gap: 12px;
           margin-bottom: 12px;
         }
 
-        .search-box {
+        .search {
           display: flex;
           align-items: center;
           gap: 10px;
@@ -412,7 +378,7 @@ export default function MaterialsManager({
           background: white;
         }
 
-        .search-box input {
+        .search input {
           width: 100%;
           border: 0;
           outline: 0;
@@ -422,7 +388,7 @@ export default function MaterialsManager({
           font-size: 13px;
         }
 
-        .clear-search {
+        .search button {
           border: 0;
           background: transparent;
           color: #8b9ab0;
@@ -430,7 +396,7 @@ export default function MaterialsManager({
           cursor: pointer;
         }
 
-        .manager-tools select {
+        .tools select {
           min-width: 180px;
           padding: 0 13px;
           border: 2px solid #e7edf5;
@@ -442,20 +408,19 @@ export default function MaterialsManager({
           font-weight: 900;
         }
 
-        .results-line {
+        .results {
           display: flex;
           justify-content: space-between;
-          align-items: center;
           margin: 0 2px 16px;
           color: #8795a9;
           font-size: 11px;
         }
 
-        .results-line b {
+        .results b {
           color: #426ba8;
         }
 
-        .results-line button {
+        .results button {
           border: 0;
           background: transparent;
           color: #527bc0;
@@ -464,8 +429,7 @@ export default function MaterialsManager({
           cursor: pointer;
         }
 
-        .manager-notice {
-          margin: 0 0 15px;
+        .notice {
           padding: 11px 14px;
           border-radius: 12px;
           background: #edf5ff;
@@ -495,52 +459,57 @@ export default function MaterialsManager({
           box-shadow: 0 8px 0 #e9e5de;
         }
 
-        .material-art {
+        .cover {
           position: relative;
           display: flex;
           width: 100%;
           height: 150px;
+          min-height: 150px;
+          box-sizing: border-box;
           align-items: center;
           justify-content: center;
           overflow: hidden;
           color: inherit;
           text-decoration: none;
+          isolation: isolate;
         }
 
-        .decoration {
+        .circle {
           position: absolute;
           display: block;
           border-radius: 50%;
           background: #ffffff55;
+          pointer-events: none;
+          z-index: -1;
         }
 
-        .decoration-one {
+        .circle-one {
           width: 130px;
           height: 130px;
           top: -65px;
           left: -30px;
         }
 
-        .decoration-two {
+        .circle-two {
           width: 100px;
           height: 100px;
           right: -30px;
           bottom: -50px;
         }
 
-        .fallback-icon {
+        .cover-icon {
+          display: block;
           position: relative;
-          z-index: 1;
           font-size: 66px;
           line-height: 1;
           filter: drop-shadow(0 7px 5px #33445a30);
+          pointer-events: none;
         }
 
-        .art-label {
+        .cover-label {
           position: absolute;
           left: 14px;
           bottom: 12px;
-          z-index: 2;
           padding: 6px 11px;
           border-radius: 20px;
           background: #ffffffdf;
@@ -549,17 +518,16 @@ export default function MaterialsManager({
           font-weight: 900;
         }
 
-        .art-arrow {
+        .cover-arrow {
           position: absolute;
           right: 15px;
           top: 12px;
-          z-index: 2;
           color: white;
           font-size: 24px;
           font-weight: 900;
         }
 
-        .material-body {
+        .body {
           padding: 15px;
         }
 
@@ -573,7 +541,7 @@ export default function MaterialsManager({
           font-weight: 1000;
         }
 
-        .material-title {
+        .title {
           display: block;
           min-height: 42px;
           margin: 10px 0 7px;
@@ -585,17 +553,17 @@ export default function MaterialsManager({
           overflow-wrap: anywhere;
         }
 
-        .material-title:hover {
+        .title:hover {
           color: #527bc0;
         }
 
-        .material-date {
+        .date {
           margin: 0;
           color: #8290a4;
           font-size: 11px;
         }
 
-        .open-hint {
+        .open-link {
           display: inline-block;
           margin-top: 10px;
           color: #527bc0;
@@ -604,15 +572,15 @@ export default function MaterialsManager({
           text-decoration: none;
         }
 
-        .card-actions {
+        .actions {
           display: flex;
           flex-wrap: wrap;
           gap: 7px;
           margin-top: 13px;
         }
 
-        .card-actions button,
-        .no-results button {
+        .actions button,
+        .empty button {
           padding: 9px 11px;
           border: 0;
           border-radius: 10px;
@@ -623,17 +591,17 @@ export default function MaterialsManager({
           cursor: pointer;
         }
 
-        .card-actions .delete-button {
+        .actions .delete {
           background: #fff0ed;
           color: #b45c50;
         }
 
-        .card-actions .muted-button {
+        .actions .muted {
           background: #f1f3f6;
           color: #718096;
         }
 
-        .card-actions button:disabled {
+        .actions button:disabled {
           opacity: .6;
           cursor: wait;
         }
@@ -662,7 +630,7 @@ export default function MaterialsManager({
           font-size: 12px;
         }
 
-        .no-results {
+        .empty {
           min-height: 220px;
           display: flex;
           flex-direction: column;
@@ -677,11 +645,11 @@ export default function MaterialsManager({
           text-align: center;
         }
 
-        .no-results span {
+        .empty span {
           font-size: 39px;
         }
 
-        .no-results p {
+        .empty p {
           margin: 0;
           color: #77879e;
           font-size: 12px;
@@ -694,11 +662,11 @@ export default function MaterialsManager({
         }
 
         @media (max-width: 560px) {
-          .manager-tools {
+          .tools {
             flex-direction: column;
           }
 
-          .manager-tools select {
+          .tools select {
             min-height: 46px;
           }
 
