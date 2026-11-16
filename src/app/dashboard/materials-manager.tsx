@@ -12,63 +12,24 @@ type Material = {
 };
 
 const types: Record<string, { label: string; icon: string; bg: string }> = {
-  cards: {
-    label: "Карточки",
-    icon: "🖍️",
-    bg: "linear-gradient(135deg,#ffe6c7,#f8dcec)",
-  },
-  story: {
-    label: "Сказки",
-    icon: "📖",
-    bg: "linear-gradient(135deg,#dce8ff,#e9ddff)",
-  },
-  game: {
-    label: "Развивающие игры",
-    icon: "🧩",
-    bg: "linear-gradient(135deg,#d8f3e5,#dcecff)",
-  },
-  illustration: {
-    label: "Иллюстрации",
-    icon: "🎨",
-    bg: "linear-gradient(135deg,#ffe0e5,#fff0c9)",
-  },
-  lesson: {
-    label: "Планы занятий",
-    icon: "📝",
-    bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)",
-  },
-  worksheet: {
-    label: "Рабочие листы",
-    icon: "📄",
-    bg: "linear-gradient(135deg,#fff0d5,#e8e2ff)",
-  },
-  ksp: {
-    label: "КСП",
-    icon: "📚",
-    bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)",
-  },
-  presentation: {
-    label: "Презентации",
-    icon: "🖥️",
-    bg: "linear-gradient(135deg,#dcecff,#f9e2ed)",
-  },
-  material: {
-    label: "Материалы",
-    icon: "🌟",
-    bg: "linear-gradient(135deg,#e8e8ff,#e1f5e8)",
-  },
+  cards: { label: "Карточки", icon: "🖍️", bg: "linear-gradient(135deg,#ffe6c7,#f8dcec)" },
+  story: { label: "Сказки", icon: "📖", bg: "linear-gradient(135deg,#dce8ff,#e9ddff)" },
+  game: { label: "Развивающие игры", icon: "🧩", bg: "linear-gradient(135deg,#d8f3e5,#dcecff)" },
+  illustration: { label: "Иллюстрации", icon: "🎨", bg: "linear-gradient(135deg,#ffe0e5,#fff0c9)" },
+  lesson: { label: "Планы занятий", icon: "📝", bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)" },
+  worksheet: { label: "Рабочие листы", icon: "📄", bg: "linear-gradient(135deg,#fff0d5,#e8e2ff)" },
+  ksp: { label: "КСП", icon: "📚", bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)" },
+  presentation: { label: "Презентации", icon: "🖥️", bg: "linear-gradient(135deg,#dcecff,#f9e2ed)" },
+  material: { label: "Материалы", icon: "🌟", bg: "linear-gradient(135deg,#e8e8ff,#e1f5e8)" },
 };
 
 function getType(kind: string | null) {
   const key = (kind || "material").toLowerCase();
-
-  return (
-    types[key] || {
-      label: kind || "Материал",
-      icon: "✨",
-      bg: "linear-gradient(135deg,#e8e8ff,#e1f5e8)",
-    }
-  );
+  return types[key] || {
+    label: kind || "Материал",
+    icon: "✨",
+    bg: "linear-gradient(135deg,#e8e8ff,#e1f5e8)",
+  };
 }
 
 export default function MaterialsManager({
@@ -95,7 +56,6 @@ export default function MaterialsManager({
     return items.filter((item) => {
       const matchesSearch =
         !search || item.title.toLocaleLowerCase().includes(search);
-
       const matchesFilter =
         filter === "all" || (item.kind || "material") === filter;
 
@@ -129,18 +89,14 @@ export default function MaterialsManager({
 
       setItems((current) =>
         current.map((item) =>
-          item.id === id
-            ? { ...item, title: data.project.title }
-            : item
+          item.id === id ? { ...item, title: data.project.title } : item
         )
       );
 
       setEditingId(null);
       setNotice("Название материала обновлено.");
     } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Ошибка сохранения."
-      );
+      setNotice(error instanceof Error ? error.message : "Ошибка сохранения.");
     } finally {
       setBusyId(null);
     }
@@ -166,9 +122,7 @@ export default function MaterialsManager({
       setItems((current) => current.filter((item) => item.id !== id));
       setNotice("Материал удалён.");
     } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Ошибка удаления."
-      );
+      setNotice(error instanceof Error ? error.message : "Ошибка удаления.");
     } finally {
       setBusyId(null);
     }
@@ -185,9 +139,7 @@ export default function MaterialsManager({
             placeholder="Найти материал по названию..."
           />
           {query && (
-            <button type="button" onClick={() => setQuery("")}>
-              ×
-            </button>
+            <button type="button" onClick={() => setQuery("")}>×</button>
           )}
         </label>
 
@@ -206,7 +158,7 @@ export default function MaterialsManager({
       </div>
 
       <div className="results">
-        Найдено материалов: <b>{visibleItems.length}</b>
+        <span>Найдено материалов: <b>{visibleItems.length}</b></span>
         {(query || filter !== "all") && (
           <button
             onClick={() => {
@@ -230,17 +182,99 @@ export default function MaterialsManager({
               <article className="material" key={item.id}>
                 <Link
                   href={`/dashboard/materials/${item.id}`}
-                  className="cover"
-                  style={{ background: type.bg }}
                   aria-label={`Открыть ${item.title}`}
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    width: "100%",
+                    height: "150px",
+                    minHeight: "150px",
+                    boxSizing: "border-box",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    background: type.bg,
+                    color: "inherit",
+                    textDecoration: "none",
+                    borderRadius: "18px 18px 0 0",
+                  }}
                 >
-                  <span className="circle circle-one" />
-                  <span className="circle circle-two" />
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      width: "130px",
+                      height: "130px",
+                      top: "-65px",
+                      left: "-30px",
+                      borderRadius: "50%",
+                      background: "#ffffff66",
+                      zIndex: 0,
+                      pointerEvents: "none",
+                    }}
+                  />
 
-                  <span className="cover-icon">{type.icon}</span>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      width: "100px",
+                      height: "100px",
+                      right: "-30px",
+                      bottom: "-50px",
+                      borderRadius: "50%",
+                      background: "#ffffff66",
+                      zIndex: 0,
+                      pointerEvents: "none",
+                    }}
+                  />
 
-                  <span className="cover-label">{type.label}</span>
-                  <span className="cover-arrow">↗</span>
+                  <span
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      display: "block",
+                      fontSize: "66px",
+                      lineHeight: 1,
+                      filter: "drop-shadow(0 7px 5px #33445a30)",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {type.icon}
+                  </span>
+
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: "14px",
+                      bottom: "12px",
+                      zIndex: 2,
+                      padding: "6px 11px",
+                      borderRadius: "20px",
+                      background: "#ffffffdf",
+                      color: "#526b8e",
+                      fontSize: "10px",
+                      fontWeight: 900,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {type.label}
+                  </span>
+
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "12px",
+                      zIndex: 2,
+                      color: "#ffffff",
+                      fontSize: "24px",
+                      fontWeight: 900,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↗
+                  </span>
                 </Link>
 
                 <div className="body">
@@ -253,9 +287,7 @@ export default function MaterialsManager({
                       <label>Новое название</label>
                       <input
                         value={editTitle}
-                        onChange={(event) =>
-                          setEditTitle(event.target.value)
-                        }
+                        onChange={(event) => setEditTitle(event.target.value)}
                         maxLength={100}
                       />
 
@@ -264,11 +296,8 @@ export default function MaterialsManager({
                           onClick={() => renameMaterial(item.id)}
                           disabled={busyId === item.id}
                         >
-                          {busyId === item.id
-                            ? "Сохраняем..."
-                            : "✓ Сохранить"}
+                          {busyId === item.id ? "Сохраняем..." : "✓ Сохранить"}
                         </button>
-
                         <button
                           className="muted"
                           onClick={() => setEditingId(null)}
@@ -288,8 +317,7 @@ export default function MaterialsManager({
                       </Link>
 
                       <p className="date">
-                        📅{" "}
-                        {new Date(item.created_at).toLocaleDateString("ru-RU")}
+                        📅 {new Date(item.created_at).toLocaleDateString("ru-RU")}
                       </p>
 
                       <Link
@@ -312,14 +340,10 @@ export default function MaterialsManager({
 
                         <button
                           className="delete"
-                          onClick={() =>
-                            deleteMaterial(item.id, item.title)
-                          }
+                          onClick={() => deleteMaterial(item.id, item.title)}
                           disabled={busyId === item.id}
                         >
-                          {busyId === item.id
-                            ? "Удаляем..."
-                            : "🗑 Удалить"}
+                          {busyId === item.id ? "Удаляем..." : "🗑 Удалить"}
                         </button>
                       </div>
                     </>
@@ -333,9 +357,7 @@ export default function MaterialsManager({
         <div className="empty">
           <span>🔍</span>
           <b>
-            {items.length
-              ? "Ничего не найдено"
-              : "Пока нет сохранённых материалов"}
+            {items.length ? "Ничего не найдено" : "Пока нет сохранённых материалов"}
           </b>
           <p>
             {items.length
@@ -356,323 +378,100 @@ export default function MaterialsManager({
       )}
 
       <style jsx>{`
-        .manager {
-          width: 100%;
-        }
-
-        .tools {
-          display: flex;
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-
+        .manager { width: 100%; }
+        .tools { display: flex; gap: 12px; margin-bottom: 12px; }
         .search {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex: 1;
-          min-height: 48px;
-          padding: 0 15px;
-          border: 2px solid #e7edf5;
-          border-radius: 14px;
-          background: white;
+          display: flex; align-items: center; gap: 10px; flex: 1;
+          min-height: 48px; padding: 0 15px; border: 2px solid #e7edf5;
+          border-radius: 14px; background: white;
         }
-
         .search input {
-          width: 100%;
-          border: 0;
-          outline: 0;
-          background: transparent;
-          color: #294363;
-          font: inherit;
-          font-size: 13px;
+          width: 100%; border: 0; outline: 0; background: transparent;
+          color: #294363; font: inherit; font-size: 13px;
         }
-
         .search button {
-          border: 0;
-          background: transparent;
-          color: #8b9ab0;
-          font-size: 22px;
-          cursor: pointer;
+          border: 0; background: transparent; color: #8b9ab0;
+          font-size: 22px; cursor: pointer;
         }
-
         .tools select {
-          min-width: 180px;
-          padding: 0 13px;
-          border: 2px solid #e7edf5;
-          border-radius: 14px;
-          background: white;
-          color: #426ba8;
-          font: inherit;
-          font-size: 12px;
-          font-weight: 900;
+          min-width: 180px; padding: 0 13px; border: 2px solid #e7edf5;
+          border-radius: 14px; background: white; color: #426ba8;
+          font: inherit; font-size: 12px; font-weight: 900;
         }
-
         .results {
-          display: flex;
-          justify-content: space-between;
-          margin: 0 2px 16px;
-          color: #8795a9;
-          font-size: 11px;
+          display: flex; justify-content: space-between; margin: 0 2px 16px;
+          color: #8795a9; font-size: 11px;
         }
-
-        .results b {
-          color: #426ba8;
-        }
-
+        .results b { color: #426ba8; }
         .results button {
-          border: 0;
-          background: transparent;
-          color: #527bc0;
-          font: inherit;
-          font-weight: 900;
-          cursor: pointer;
+          border: 0; background: transparent; color: #527bc0;
+          font: inherit; font-weight: 900; cursor: pointer;
         }
-
         .notice {
-          padding: 11px 14px;
-          border-radius: 12px;
-          background: #edf5ff;
-          color: #426ba8;
-          font-size: 12px;
-          font-weight: 900;
+          padding: 11px 14px; border-radius: 12px; background: #edf5ff;
+          color: #426ba8; font-size: 12px; font-weight: 900;
         }
-
         .materials {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 18px;
+          display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px;
         }
-
         .material {
-          min-width: 0;
-          overflow: hidden;
-          border: 2px solid #eeeaf0;
-          border-radius: 21px;
-          background: white;
-          box-shadow: 0 5px 0 #e9e5de;
+          min-width: 0; overflow: hidden; border: 2px solid #eeeaf0;
+          border-radius: 21px; background: white; box-shadow: 0 5px 0 #e9e5de;
           transition: transform .2s, box-shadow .2s;
         }
-
         .material:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 0 #e9e5de;
+          transform: translateY(-3px); box-shadow: 0 8px 0 #e9e5de;
         }
-
-        .cover {
-          position: relative;
-          display: flex;
-          width: 100%;
-          height: 150px;
-          min-height: 150px;
-          box-sizing: border-box;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-          color: inherit;
-          text-decoration: none;
-          isolation: isolate;
-        }
-
-        .circle {
-          position: absolute;
-          display: block;
-          border-radius: 50%;
-          background: #ffffff55;
-          pointer-events: none;
-          z-index: -1;
-        }
-
-        .circle-one {
-          width: 130px;
-          height: 130px;
-          top: -65px;
-          left: -30px;
-        }
-
-        .circle-two {
-          width: 100px;
-          height: 100px;
-          right: -30px;
-          bottom: -50px;
-        }
-
-        .cover-icon {
-          display: block;
-          position: relative;
-          font-size: 66px;
-          line-height: 1;
-          filter: drop-shadow(0 7px 5px #33445a30);
-          pointer-events: none;
-        }
-
-        .cover-label {
-          position: absolute;
-          left: 14px;
-          bottom: 12px;
-          padding: 6px 11px;
-          border-radius: 20px;
-          background: #ffffffdf;
-          color: #526b8e;
-          font-size: 10px;
-          font-weight: 900;
-        }
-
-        .cover-arrow {
-          position: absolute;
-          right: 15px;
-          top: 12px;
-          color: white;
-          font-size: 24px;
-          font-weight: 900;
-        }
-
-        .body {
-          padding: 15px;
-        }
-
+        .body { padding: 15px; }
         .type-label {
-          display: inline-block;
-          padding: 5px 9px;
-          border-radius: 20px;
-          background: #f1f4fa;
-          color: #69809e;
-          font-size: 9px;
-          font-weight: 1000;
+          display: inline-block; padding: 5px 9px; border-radius: 20px;
+          background: #f1f4fa; color: #69809e; font-size: 9px; font-weight: 1000;
         }
-
         .title {
-          display: block;
-          min-height: 42px;
-          margin: 10px 0 7px;
-          color: #294363;
-          font-size: 15px;
-          font-weight: 1000;
-          line-height: 1.4;
-          text-decoration: none;
-          overflow-wrap: anywhere;
+          display: block; min-height: 42px; margin: 10px 0 7px;
+          color: #294363; font-size: 15px; font-weight: 1000;
+          line-height: 1.4; text-decoration: none; overflow-wrap: anywhere;
         }
-
-        .title:hover {
-          color: #527bc0;
-        }
-
-        .date {
-          margin: 0;
-          color: #8290a4;
-          font-size: 11px;
-        }
-
+        .title:hover { color: #527bc0; }
+        .date { margin: 0; color: #8290a4; font-size: 11px; }
         .open-link {
-          display: inline-block;
-          margin-top: 10px;
-          color: #527bc0;
-          font-size: 12px;
-          font-weight: 1000;
-          text-decoration: none;
+          display: inline-block; margin-top: 10px; color: #527bc0;
+          font-size: 12px; font-weight: 1000; text-decoration: none;
         }
-
-        .actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
-          margin-top: 13px;
+        .actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+        .actions button, .empty button {
+          padding: 9px 11px; border: 0; border-radius: 10px;
+          background: #eaf0fc; color: #42649b; font-size: 10px;
+          font-weight: 1000; cursor: pointer;
         }
-
-        .actions button,
-        .empty button {
-          padding: 9px 11px;
-          border: 0;
-          border-radius: 10px;
-          background: #eaf0fc;
-          color: #42649b;
-          font-size: 10px;
-          font-weight: 1000;
-          cursor: pointer;
-        }
-
-        .actions .delete {
-          background: #fff0ed;
-          color: #b45c50;
-        }
-
-        .actions .muted {
-          background: #f1f3f6;
-          color: #718096;
-        }
-
-        .actions button:disabled {
-          opacity: .6;
-          cursor: wait;
-        }
-
-        .edit-area {
-          margin-top: 10px;
-        }
-
+        .actions .delete { background: #fff0ed; color: #b45c50; }
+        .actions .muted { background: #f1f3f6; color: #718096; }
+        .actions button:disabled { opacity: .6; cursor: wait; }
+        .edit-area { margin-top: 10px; }
         .edit-area label {
-          display: block;
-          margin-bottom: 6px;
-          color: #718096;
-          font-size: 11px;
-          font-weight: 900;
+          display: block; margin-bottom: 6px; color: #718096;
+          font-size: 11px; font-weight: 900;
         }
-
         .edit-area input {
-          box-sizing: border-box;
-          width: 100%;
-          padding: 10px;
-          border: 2px solid #dce6f5;
-          border-radius: 9px;
-          outline: none;
-          color: #294363;
-          font: inherit;
-          font-size: 12px;
+          box-sizing: border-box; width: 100%; padding: 10px;
+          border: 2px solid #dce6f5; border-radius: 9px; outline: none;
+          color: #294363; font: inherit; font-size: 12px;
         }
-
         .empty {
-          min-height: 220px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 9px;
-          padding: 22px;
-          border: 2px dashed #e9d9b8;
-          border-radius: 20px;
-          background: #fffaf0;
-          color: #294363;
-          text-align: center;
+          min-height: 220px; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 9px; padding: 22px;
+          border: 2px dashed #e9d9b8; border-radius: 20px;
+          background: #fffaf0; color: #294363; text-align: center;
         }
-
-        .empty span {
-          font-size: 39px;
-        }
-
-        .empty p {
-          margin: 0;
-          color: #77879e;
-          font-size: 12px;
-        }
-
+        .empty span { font-size: 39px; }
+        .empty p { margin: 0; color: #77879e; font-size: 12px; }
         @media (max-width: 900px) {
-          .materials {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
+          .materials { grid-template-columns: repeat(2,minmax(0,1fr)); }
         }
-
         @media (max-width: 560px) {
-          .tools {
-            flex-direction: column;
-          }
-
-          .tools select {
-            min-height: 46px;
-          }
-
-          .materials {
-            grid-template-columns: 1fr;
-          }
+          .tools { flex-direction: column; }
+          .tools select { min-height: 46px; }
+          .materials { grid-template-columns: 1fr; }
         }
       `}</style>
     </div>
