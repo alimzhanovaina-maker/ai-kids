@@ -20,7 +20,12 @@ export default async function Dashboard() {
     <main className="dashboard">
       <header className="header">
         <Link href="/" className="brand"><span className="logo">✦</span> AI KIDS <span>✨</span></Link>
-        <nav><Link href="/">Главная</Link><Link href="/studio">Мастерская</Link><Link href="/studio/kit">Умный комплект</Link><Link href="/studio/visuals">Наглядность</Link></nav>
+        <nav>
+          <Link href="/">Главная</Link>
+          <Link href="/studio">Мастерская</Link>
+          <Link href="/studio/kit">Умный комплект</Link>
+          <Link href="/studio/visuals">Наглядность</Link>
+        </nav>
         <form action="/auth/signout" method="post"><button className="logout">Выйти</button></form>
       </header>
 
@@ -32,7 +37,10 @@ export default async function Dashboard() {
           <Link href="/studio" className="primary">✨ Создать материал <b>→</b></Link>
           <span className="welcome-note">🧸 Творим с радостью каждый день</span>
         </div>
-        <div className="welcome-art" aria-hidden="true"><span className="rainbow">🌈</span><span className="bear">🐻</span><span className="fox">🦊</span><span className="book">📚</span><span className="star">⭐</span></div>
+        <div className="welcome-art" aria-hidden="true">
+          <span className="rainbow">🌈</span><span className="bear">🐻</span>
+          <span className="fox">🦊</span><span className="book">📚</span><span className="star">⭐</span>
+        </div>
       </section>
 
       <section className="stats">
@@ -46,22 +54,53 @@ export default async function Dashboard() {
           <div><span className="eyebrow">ТВОЯ КОЛЛЕКЦИЯ</span><h2>Мои материалы 🖍️</h2><p>Все сохранённые разработки в одном месте.</p></div>
           <Link href="/studio" className="outline">＋ Новый материал</Link>
         </div>
-        {error ? <div className="alert">Не удалось загрузить материалы. Попробуй обновить страницу.</div> :
-          items.length ? <div className="materials">
-            {items.map((item) => <article className="material" key={item.id}>
-              <div className="material-art"><span>{item.kind === "story" ? "📖" : item.kind === "game" ? "🧩" : item.kind === "illustration" ? "🎨" : item.kind === "cards" ? "🖍️" : item.kind === "lesson" ? "📝" : "✏️"}</span><i>✦</i></div>
-              <div className="material-body"><small>{item.kind || "Материал"}</small><h3>{item.title}</h3><p>📅 {new Date(item.created_at).toLocaleDateString("ru-RU")}</p></div>
-            </article>)}
-          </div> : <div className="empty">
+
+        {error ? (
+          <div className="alert">Не удалось загрузить материалы. Попробуй обновить страницу.</div>
+        ) : items.length ? (
+          <div className="materials">
+            {items.map((item) => (
+              <Link
+                href={`/dashboard/materials/${item.id}`}
+                className="material"
+                key={item.id}
+                aria-label={`Открыть материал: ${item.title}`}
+              >
+                <div className="material-art">
+                  <span>
+                    {item.kind === "story" ? "📖" :
+                     item.kind === "game" ? "🧩" :
+                     item.kind === "illustration" ? "🎨" :
+                     item.kind === "cards" ? "🖍️" :
+                     item.kind === "lesson" ? "📝" : "✏️"}
+                  </span>
+                  <i>↗</i>
+                </div>
+                <div className="material-body">
+                  <small>{item.kind || "Материал"}</small>
+                  <h3>{item.title}</h3>
+                  <p>📅 {new Date(item.created_at).toLocaleDateString("ru-RU")}</p>
+                  <p className="open-hint">Открыть материал →</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">
             <div className="empty-art">📚　🦊　✨</div>
             <h3>Твоя коллекция ждёт первую работу!</h3>
             <p>Создай игру, сказку или рабочий лист — и сохрани его здесь.</p>
             <Link href="/studio" className="primary">Создать первый материал →</Link>
           </div>
-        }
+        )}
       </section>
 
-      <section className="bottom"><span>🌼</span><div><b>Каждая большая идея начинается с маленького шага!</b><p>AI KIDS поможет подготовить материалы для занятий.</p></div><Link href="/studio">В мастерскую →</Link></section>
+      <section className="bottom">
+        <span>🌼</span>
+        <div><b>Каждая большая идея начинается с маленького шага!</b><p>AI KIDS поможет подготовить материалы для занятий.</p></div>
+        <Link href="/studio">В мастерскую →</Link>
+      </section>
+
       <footer><b>✦ AI KIDS</b><span>Большие идеи для маленьких открытий</span><span>Қазақша · Русский</span></footer>
 
       <style>{`
@@ -83,10 +122,14 @@ export default async function Dashboard() {
         .stat>span{width:49px;height:49px;display:grid;place-items:center;border-radius:16px;background:#ffffffa6;font-size:27px}
         .stat small{display:block;color:#71819a;font-size:9px;font-weight:1000;letter-spacing:1px}.stat strong{display:block;margin-top:3px;color:#294363;font-size:21px;font-weight:1000}.stat p{margin:2px 0 0;color:#7d8ca1;font-size:11px}
         .section-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:19px}.section-head h2{margin:5px 0;color:#294363;font-size:29px;font-weight:1000}.section-head p{margin:0;color:#77879e;font-size:13px}.outline{display:inline-flex;align-items:center;min-height:43px;font-size:12px}
-        .materials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.material{overflow:hidden;border:2px solid #eeeaf0;border-radius:20px;background:white;box-shadow:0 5px 0 #e9e5de}
+        .materials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+        .material{display:block;overflow:hidden;border:2px solid #eeeaf0;border-radius:20px;background:white;box-shadow:0 5px 0 #e9e5de;text-decoration:none;transition:transform .18s,box-shadow .18s;color:inherit}
+        .material:hover{transform:translateY(-4px);box-shadow:0 9px 0 #e9e5de}
+        .material:focus-visible{outline:3px solid #7898d0;outline-offset:4px}
         .material-art{height:105px;position:relative;display:grid;place-items:center;background:linear-gradient(120deg,#ffeacb,#f9e0ed)}.material:nth-child(3n+2) .material-art{background:linear-gradient(120deg,#e2edff,#e5e1ff)}.material:nth-child(3n) .material-art{background:linear-gradient(120deg,#dff3e7,#fff0c9)}
         .material-art span{font-size:54px;filter:drop-shadow(0 5px 3px #33445a20)}.material-art i{position:absolute;right:22px;top:12px;color:white;font-size:22px;font-style:normal}
         .material-body{padding:15px}.material-body small{display:inline-block;padding:5px 9px;border-radius:20px;background:#f1f4fa;color:#69809e;font-size:9px;font-weight:1000}.material-body h3{margin:9px 0 7px;color:#294363;font-size:15px}.material-body p{margin:0;color:#8290a4;font-size:11px}
+        .material-body .open-hint{margin-top:10px;color:#527bc0;font-size:12px;font-weight:1000}
         .empty{min-height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px;border:2px dashed #e9d9b8;border-radius:23px;background:#fffaf0}.empty-art{font-size:42px}.empty h3{margin:12px 0 5px;font-size:19px}.empty p{margin:0 0 2px;color:#77879e;font-size:13px}
         .alert{padding:15px;border-radius:14px;background:#fff0e8;color:#a45b43;font-weight:800}
         .bottom{display:flex;align-items:center;gap:15px;margin-top:33px;padding:19px 22px;border:2px solid #d9ecdf;border-radius:20px;background:#e8f5eb}.bottom>span{font-size:35px}.bottom b{color:#3b6a53;font-size:14px}.bottom p{margin:4px 0 0;color:#6c8a79;font-size:12px}.bottom>a{margin-left:auto;color:#477b60;font-size:12px;font-weight:1000;white-space:nowrap}
