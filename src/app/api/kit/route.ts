@@ -1,4 +1,3 @@
-
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -39,12 +38,7 @@ export async function POST(req: Request) {
       language = "both",
       count = 8,
       difficulty = "обычный",
-      materialTypes = [
-        "cards",
-        "worksheet",
-        "game",
-        "teacher_guide",
-      ],
+      materialTypes = ["cards", "worksheet", "game", "teacher_guide"],
     } = body;
 
     if (typeof topic !== "string" || !topic.trim()) {
@@ -54,10 +48,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const total = Math.min(
-      Math.max(Number(count) || 8, 2),
-      20
-    );
+    const selectedLanguage = ["ru", "kz", "both"].includes(language)
+      ? language
+      : "both";
+
+    const total = Math.min(Math.max(Number(count) || 8, 2), 20);
 
     const allowedTypes = [
       "cards",
@@ -70,9 +65,7 @@ export async function POST(req: Request) {
     ];
 
     const selectedTypes = Array.isArray(materialTypes)
-      ? materialTypes.filter((item: string) =>
-          allowedTypes.includes(item)
-        )
+      ? materialTypes.filter((item: string) => allowedTypes.includes(item))
       : [];
 
     if (!selectedTypes.length) {
@@ -92,9 +85,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const quota = Array.isArray(quotaData)
-      ? quotaData[0]
-      : quotaData;
+    const quota = Array.isArray(quotaData) ? quotaData[0] : quotaData;
 
     if (!quota?.allowed) {
       return NextResponse.json(
@@ -103,18 +94,30 @@ export async function POST(req: Request) {
       );
     }
 
-    let languageInstruction =
-      "Создай полноценный комплект на русском и казахском языках. Для каждого задания, названия и инструкции предоставь обе версии.";
-
-    if (language === "ru") {
-      languageInstruction =
-        "Создай весь комплект только на русском языке.";
-    }
-
-    if (language === "kz") {
-      languageInstruction =
-        "Создай весь комплект только на казахском языке.";
-    }
+    const languageInstruction =
+      selectedLanguage === "ru"
+        ? `
+ЯЗЫКОВОЙ РЕЖИМ: ТОЛЬКО РУССКИЙ.
+Весь видимый текст комплекта пиши исключительно на русском языке.
+Не добавляй казахские переводы, казахские предложения или двуязычные заголовки.
+Поля titleKz и instructionKz обязательно верни пустыми строками.
+В массиве vocabulary заполняй только поле ru, поле kz оставляй пустой строкой.
+`
+        : selectedLanguage === "kz"
+        ? `
+ТІЛ РЕЖИМІ: ТЕК ҚАЗАҚ ТІЛІ.
+Барлық көрінетін мәтінді тек қазақ тілінде жаз.
+Орысша аудармаларды, орысша сөйлемдерді және екі тілдегі тақырыптарды қоспа.
+Өрістердің құрылымын сақтау үшін title өрісіне қазақша атауды жаз, titleKz өрісін бос қалдыр.
+instruction өрісіне қазақша нұсқауды жаз, instructionKz өрісін бос қалдыр.
+vocabulary массивінде тек kz өрісін толтыр, ru өрісін бос қалдыр.
+`
+        : `
+ЯЗЫКОВОЙ РЕЖИМ: РУССКИЙ + КАЗАХСКИЙ.
+Каждый важный заголовок, текст и инструкция должны иметь обе языковые версии.
+Русский текст размещай в полях без суффикса Kz, казахский — в соответствующих полях Kz.
+В vocabulary заполняй оба поля ru и kz.
+`;
 
     const typeNames: Record<string, string> = {
       cards: "Обучающие карточки",
@@ -133,25 +136,19 @@ export async function POST(req: Request) {
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       response_format: { type: "json_object" },
-      temperature: 0.5,
+      temperature: 0.4,
       messages: [
         {
           role: "system",
           content: `
-Ты — AI-методист современной образовательной платформы AI KIDS.
-
-Ты специализируешься на дошкольном образовании,
-разработке дидактических игр, рабочих листов,
-наглядных пособий и методических материалов.
-
-Учитывай возраст детей.
-Используй понятные инструкции.
+Ты — AI-методист образовательной платформы AI KIDS.
+Создавай качественные материалы для дошкольного образования.
+Учитывай возраст детей и используй понятные инструкции.
 Не приписывай детям навыки, которые они ещё только осваивают.
-Формулируй педагогические результаты через:
-«учится», «пробует», «закрепляет», «дағдыланады».
-
-Не придумывай нормативные документы и требования.
-Возвращай только корректный JSON.
+Формулируй результаты как процесс: «учится», «пробует», «закрепляет», «дағдыланады».
+Строго соблюдай выбранный языковой режим из задания пользователя.
+Не добавляй второй язык, если выбран один язык.
+Возвращай только корректный JSON без Markdown.
           `,
         },
         {
@@ -167,70 +164,69 @@ export async function POST(req: Request) {
 
 ${languageInstruction}
 
-Верни JSON со следующей структурой:
-
+Верни JSON строго со следующей структурой:
 {
-  "title": "Название комплекта",
+  "title": "Название комплекта на выбранном языке",
   "topic": "${topic}",
   "age": "${age}",
   "difficulty": "${difficulty}",
-  "objective": "Цель комплекта",
-  "materials": ["Список необходимых материалов"],
-  "teacherIntroduction": "Краткое вступление педагога",
+  "objective": "Цель комплекта на выбранном языке",
+  "materials": ["Список необходимых материалов на выбранном языке"],
+  "teacherIntroduction": "Вступление педагога на выбранном языке",
   "cards": [
     {
       "number": 1,
-      "title": "Название",
-      "titleKz": "Қазақша атауы",
-      "visualDescription": "Точное описание изображения на английском языке",
-      "learningFact": "Короткий познавательный факт"
+      "title": "Название карточки на выбранном языке",
+      "titleKz": "",
+      "visualDescription": "Точное описание изображения на английском языке для генератора изображений",
+      "learningFact": "Познавательный факт на выбранном языке"
     }
   ],
   "worksheet": {
-    "title": "Название рабочего листа",
+    "title": "Название рабочего листа на выбранном языке",
     "tasks": [
       {
-        "instruction": "Инструкция ребёнку",
-        "instructionKz": "Қазақша нұсқау",
+        "instruction": "Инструкция на выбранном языке",
+        "instructionKz": "",
         "type": "matching",
-        "items": ["Элемент задания"],
-        "answer": "Правильный ответ для педагога"
+        "items": ["Элемент задания на выбранном языке"],
+        "answer": "Правильный ответ для педагога на выбранном языке"
       }
     ]
   },
   "game": {
-    "title": "Название игры",
-    "purpose": "Цель игры",
-    "rules": ["Правило 1", "Правило 2"],
-    "teacherQuestions": ["Вопросы детям"]
+    "title": "Название игры на выбранном языке",
+    "purpose": "Цель игры на выбранном языке",
+    "rules": ["Правила игры на выбранном языке"],
+    "teacherQuestions": ["Вопросы детям на выбранном языке"]
   },
   "poster": {
-    "title": "Заголовок плаката",
+    "title": "Заголовок плаката на выбранном языке",
     "sections": [
       {
-        "heading": "Подзаголовок",
-        "description": "Краткое содержание"
+        "heading": "Подзаголовок на выбранном языке",
+        "description": "Краткое содержание на выбранном языке"
       }
     ]
   },
   "coloring": {
-    "title": "Тема раскраски",
-    "visualDescription": "Описание рисунка на английском языке"
+    "title": "Тема раскраски на выбранном языке",
+    "visualDescription": "Описание рисунка на английском языке для генератора изображений"
   },
   "puzzle": {
-    "title": "Название пазла",
-    "instruction": "Инструкция",
-    "pieces": ["Описание деталей"]
+    "title": "Название пазла на выбранном языке",
+    "instruction": "Инструкция на выбранном языке",
+    "pieces": ["Описание деталей на выбранном языке"]
   },
   "teacherGuide": {
-    "lessonFlow": ["Этап занятия"],
-    "teacherTips": ["Рекомендация педагогу"],
-    "expectedProcess": ["Дети учатся...", "Балалар ... дағдыланады."]
+    "lessonFlow": ["Этап занятия на выбранном языке"],
+    "teacherTips": ["Совет педагогу на выбранном языке"],
+    "expectedProcess": ["Ожидаемый процесс обучения на выбранном языке"]
   },
   "vocabulary": [
     {
-      "ru": "Русское слово",
-      "kz": "Қазақское слово"
+      "ru": "Слово на русском языке или пустая строка",
+      "kz": "Слово на казахском языке или пустая строка"
     }
   ]
 }
@@ -238,11 +234,13 @@ ${languageInstruction}
 ВАЖНО:
 - Количество объектов в cards должно быть ровно ${total}.
 - Не повторяй карточки.
-- Не заполняй невыбранные виды материалов.
-- Если материал не выбран, верни null для соответствующего раздела.
+- Не заполняй невыбранные виды материалов: верни null для соответствующих разделов.
 - Все задания должны соответствовать возрасту.
 - Ответы предназначены педагогу, а не ребёнку.
-- Описания изображений должны быть конкретными и понятными генератору изображений.
+- Описания изображений оставляй на английском языке — это технические подсказки генератору, а не текст для детей.
+- При режиме «только русский» не пиши ни одного казахского слова в видимом тексте.
+- При режиме «только казахский» не пиши ни одного русского слова в видимом тексте.
+- Не создавай двуязычные предложения, если выбран один язык.
           `,
         },
       ],
@@ -256,14 +254,30 @@ ${languageInstruction}
 
     const kit = JSON.parse(raw);
 
-    if (
-      !kit.title ||
-      !Array.isArray(kit.cards) ||
-      kit.cards.length !== total
-    ) {
-      throw new Error(
-        "AI вернул неполный комплект. Попробуй повторить запрос."
-      );
+    if (!kit.title || !Array.isArray(kit.cards) || kit.cards.length !== total) {
+      throw new Error("AI вернул неполный комплект. Попробуй повторить запрос.");
+    }
+
+    // Очищаем поля второго языка, чтобы интерфейс не показывал случайные переводы.
+    if (selectedLanguage === "ru") {
+      for (const card of kit.cards || []) card.titleKz = "";
+      for (const task of kit.worksheet?.tasks || []) task.instructionKz = "";
+      for (const word of kit.vocabulary || []) word.kz = "";
+    }
+
+    if (selectedLanguage === "kz") {
+      for (const card of kit.cards || []) {
+        card.title = card.titleKz || card.title;
+        card.titleKz = "";
+      }
+      for (const task of kit.worksheet?.tasks || []) {
+        task.instruction = task.instructionKz || task.instruction;
+        task.instructionKz = "";
+      }
+      for (const word of kit.vocabulary || []) {
+        word.kz = word.kz || word.ru;
+        word.ru = "";
+      }
     }
 
     return NextResponse.json({
@@ -279,12 +293,9 @@ ${languageInstruction}
         error:
           error?.status === 429
             ? "Недостаточно средств или превышен лимит OpenAI API."
-            : error?.message ||
-              "Не удалось создать образовательный комплект.",
+            : error?.message || "Не удалось создать образовательный комплект.",
       },
-      {
-        status: error?.status === 429 ? 429 : 500,
-      }
+      { status: error?.status === 429 ? 429 : 500 }
     );
   }
 }
