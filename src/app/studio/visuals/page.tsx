@@ -31,6 +31,135 @@ const categories = [
   ["custom", "✍️ Своя тема"],
 ];
 
+type MaterialResult = {
+  illustrations: string[];
+  labels: string[];
+  remaining?: number;
+};
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Не удалось загрузить одну из иллюстраций."));
+    img.src = src;
+  });
+}
+
+async function composeA4Sheet(illustrations: string[], labels: string[]) {
+  const canvas = document.createElement("canvas");
+  // A4 portrait at 150 DPI.
+  canvas.width = 1240;
+  canvas.height = 1754;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Браузер не поддерживает создание листа PNG.");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const total = illustrations.length;
+  const columns = total <= 4 ? 2 : 3;
+  const rows = Math.ceil(total / columns);
+  const marginX = 76;
+  const marginY = 78;
+  const gapX = 28;
+  const gapY = 28;
+  const cardW = (canvas.width - marginX * 2 - gapX * (columns - 1)) / columns;
+  const cardH = Math.min(
+    470,
+    (canvas.height - marginY * 2 - gapY * (rows - 1)) / rows
+  );
+  const totalGridH = rows * cardH + (rows - 1) * gapY;
+  const startY = Math.max(marginY, (canvas.height - totalGridH) / 2);
+  const loaded = await Promise.all(illustrations.map(loadImage));
+
+  loaded.forEach((img, index) => {
+    const row = Math.floor(index / columns);
+    const col = index % columns;
+    const x = marginX + col * (cardW + gapX);
+    const y = startY + row * (cardH + gapY);
+
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#9aa9bd";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([7, 6]);
+    roundRect(ctx, x, y, cardW, cardH, 22);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const labelArea = 74;
+    const imagePadding = 24;
+    const imageBoxW = cardW - imagePadding * 2;
+    const imageBoxH = cardH - labelArea - imagePadding * 1.5;
+    const scale = Math.min(imageBoxW / img.width, imageBoxH / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    const drawX = x + (cardW - drawW) / 2;
+    const drawY = y + imagePadding + (imageBoxH - drawH) / 2;
+
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+    const label = labels[index] || `Элемент ${index + 1}`;
+    ctx.fillStyle = "#294363";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 24px Arial, sans-serif";
+    wrapCanvasText(ctx, label, x + 18, y + cardH - 54, cardW - 36, 27, 2);
+    ctx.restore();
+  });
+
+  return canvas.toDataURL("image/png");
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+}
+
+function wrapCanvasText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  centerY: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number
+) {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let line = "";
+
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+
+  const visible = lines.slice(0, maxLines);
+  const startY = centerY - ((visible.length - 1) * lineHeight) / 2;
+  visible.forEach((part, index) => {
+    let output = part;
+    while (ctx.measureText(output).width > maxWidth && output.length > 3) {
+      output = output.slice(0, -2) + "…";
+    }
+    ctx.fillText(output, centerX, startY + index * lineHeight);
+  });
+}
+
 export default function VisualStudio() {
   const [kind, setKind] = useState("cards");
   const [category, setCategory] = useState("animals");
@@ -67,18 +196,20 @@ export default function VisualStudio() {
       });
 
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Не удалось создать материал.");
-      }
+      if (!response.ok) throw new Error(data.error || "Не удалось создать материал.");
+
       if (
-        typeof data.image !== "string" ||
-        !data.image.startsWith("data:image/")
+        !Array.isArray(data.illustrations) ||
+        data.illustrations.length !== Number(count) ||
+        !data.illustrations.every((item: unknown) => typeof item === "string" && item.startsWith("data:image/"))
       ) {
-        throw new Error("Сервис вернул изображение в неизвестном формате.");
+        throw new Error("Сервис вернул неполный набор иллюстраций. Попробуй ещё раз.");
       }
 
-      setImage(data.image);
-      setLabels(Array.isArray(data.labels) ? data.labels : []);
+      const names = Array.isArray(data.labels) ? data.labels : [];
+      const sheet = await composeA4Sheet(data.illustrations, names);
+      setImage(sheet);
+      setLabels(names);
       setRemaining(typeof data.remaining === "number" ? data.remaining : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка генерации.");
@@ -89,10 +220,9 @@ export default function VisualStudio() {
 
   function downloadImage() {
     if (!image) return;
-    const extension = image.startsWith("data:image/png") ? "png" : "jpg";
     const a = document.createElement("a");
     a.href = image;
-    a.download = `AI-KIDS-${kind}.${extension}`;
+    a.download = `AI-KIDS-A4-${kind}.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -113,21 +243,18 @@ export default function VisualStudio() {
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>AI KIDS — материал для печати</title>
+        <title>AI KIDS — лист A4</title>
         <style>
-          @page { size: A4 portrait; margin: 5mm; }
+          @page { size: A4 portrait; margin: 0; }
           * { box-sizing: border-box; }
-          html, body { margin: 0; padding: 0; width: 100%; background: #fff; }
-          body { display: flex; justify-content: center; align-items: flex-start; }
-          img { display: block; width: auto; height: auto; max-width: 200mm; max-height: 287mm; object-fit: contain; }
-          @media print {
-            html, body { width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            img { max-width: 200mm; max-height: 287mm; }
-          }
+          html, body { margin: 0; padding: 0; width: 210mm; height: 297mm; background: white; }
+          body { display: flex; justify-content: center; align-items: center; }
+          img { display: block; width: 210mm; height: 297mm; object-fit: contain; }
+          @media print { html, body { width: 210mm; height: 297mm; } }
         </style>
       </head>
       <body>
-        <img id="print-image" src="${image}" alt="Материал AI KIDS для печати" />
+        <img id="print-image" src="${image}" alt="Лист AI KIDS A4" />
         <script>
           const img = document.getElementById("print-image");
           let opened = false;
@@ -138,7 +265,7 @@ export default function VisualStudio() {
           }
           img.onload = openPrint;
           img.onerror = () => {
-            document.body.innerHTML = "<p>Не удалось загрузить изображение. Закрой окно и скачай PNG.</p>";
+            document.body.innerHTML = "<p>Не удалось загрузить лист. Закрой окно и скачай PNG.</p>";
           };
           if (img.complete && img.naturalWidth > 0) openPrint();
         </script>
@@ -152,8 +279,7 @@ export default function VisualStudio() {
     <main className="visual-page">
       <header className="topbar">
         <Link className="brand" href="/">
-          <span className="brand-mark">✦</span>
-          <span>AI KIDS</span>
+          <span className="brand-mark">✦</span><span>AI KIDS</span>
         </Link>
         <nav className="nav">
           <Link href="/">Главная</Link>
@@ -166,10 +292,7 @@ export default function VisualStudio() {
         <div className="intro-icon">🎨 ✨ 🧩</div>
         <span className="eyebrow">ТВОРЧЕСКАЯ МАСТЕРСКАЯ</span>
         <h1>Визуальная мастерская AI KIDS</h1>
-        <p>
-          Создавай яркие карточки, плакаты и задания для дошкольников
-          на русском и казахском языках.
-        </p>
+        <p>Создавай яркие карточки, плакаты и задания для дошкольников на русском и казахском языках.</p>
       </section>
 
       <section className="workspace">
@@ -187,149 +310,94 @@ export default function VisualStudio() {
             <label className="field">
               <span>Что будем создавать?</span>
               <select value={kind} onChange={(e) => setKind(e.target.value)}>
-                {kinds.map(([value, title]) => (
-                  <option key={value} value={value}>{title}</option>
-                ))}
+                {kinds.map(([value, title]) => <option key={value} value={value}>{title}</option>)}
               </select>
             </label>
-
             <label className="field">
               <span>Возраст детей</span>
               <select value={age} onChange={(e) => setAge(e.target.value)}>
-                <option>3 года</option>
-                <option>4 года</option>
-                <option>5 лет</option>
-                <option>6 лет</option>
-                <option>7 лет</option>
+                <option>3 года</option><option>4 года</option><option>5 лет</option><option>6 лет</option><option>7 лет</option>
               </select>
             </label>
-
             <label className="field">
               <span>Категория</span>
               <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                {categories.map(([value, title]) => (
-                  <option key={value} value={value}>{title}</option>
-                ))}
+                {categories.map(([value, title]) => <option key={value} value={value}>{title}</option>)}
               </select>
             </label>
-
             {category === "custom" && (
               <label className="field full">
                 <span>Твоя собственная тема</span>
-                <input
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="Например: Подводный мир"
-                  maxLength={160}
-                />
+                <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Например: Подводный мир" maxLength={160} />
               </label>
             )}
-
             <label className="field">
               <span>Язык материала</span>
               <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-                <option value="ru">Русский</option>
-                <option value="kz">Қазақша</option>
-                <option value="both">Русский + Қазақша</option>
+                <option value="ru">Русский</option><option value="kz">Қазақша</option><option value="both">Русский + Қазақша</option>
               </select>
             </label>
-
             <label className="field">
               <span>Количество элементов</span>
               <select value={count} onChange={(e) => setCount(e.target.value)}>
-                {[2, 4, 6, 8, 10, 12, 15, 20].map((n) => (
-                  <option key={n} value={n}>{n} элементов</option>
-                ))}
+                {[2, 4, 6, 8].map((n) => <option key={n} value={n}>{n} элементов</option>)}
               </select>
             </label>
-
             <label className="field full">
               <span>Оформление</span>
               <select value={style} onChange={(e) => setStyle(e.target.value)}>
-                <option value="color">🌈 Цветное</option>
-                <option value="mono">✏️ Чёрно-белое</option>
+                <option value="color">🌈 Цветное</option><option value="mono">✏️ Чёрно-белое</option>
               </select>
             </label>
           </div>
 
           <div className="print-note">
             <span>📄</span>
-            <div>
-              <b>Подготовлено для печати на A4</b>
-              <small>Расположение карточек подбирается под выбранное количество.</small>
-            </div>
+            <div><b>Лист A4 с точным количеством карточек</b><small>Каждая иллюстрация создаётся отдельно, а сетка собирается автоматически.</small></div>
           </div>
 
-          <button
-            onClick={generate}
-            disabled={busy || (category === "custom" && !topic.trim())}
-            className="create-button"
-          >
-            {busy ? "✨ Создаём твой материал..." : "🎨 Создать наглядный материал"}
+          <button onClick={generate} disabled={busy || (category === "custom" && !topic.trim())} className="create-button">
+            {busy ? "✨ Создаём иллюстрации по одной..." : "🎨 Создать наглядный материал"}
           </button>
-
-          <p className="cost-note">
-            Генерация использует баланс OpenAI API. Для первого теста можно выбрать 2–4 элемента.
-          </p>
+          <p className="cost-note">Каждая карточка создаётся отдельным запросом к OpenAI и расходует баланс API. Набор из 8 карточек требует 8 генераций изображений.</p>
         </div>
 
         {error && <div className="error-box" role="alert">⚠️ {error}</div>}
-
         {busy && (
           <div className="loading-panel">
             <div className="loading-icon">🎨</div>
-            <h3>Готовим твой материал</h3>
-            <p>Подбираем элементы и создаём иллюстрацию. Это может занять немного времени.</p>
+            <h3>Создаём карточки по одной</h3>
+            <p>Затем автоматически соберём их на одном листе A4. Пожалуйста, подожди.</p>
           </div>
         )}
 
         {image && (
           <section className="result-panel">
             <div className="panel-heading">
-              <div>
-                <span className="eyebrow">ШАГ 2</span>
-                <h2>Твой готовый материал</h2>
-                <p>Проверь лист и выбери, как его сохранить.</p>
-              </div>
+              <div><span className="eyebrow">ШАГ 2</span><h2>Твой готовый материал</h2><p>Количество карточек на листе соответствует выбранному.</p></div>
               <span className="panel-emoji">🌟</span>
             </div>
-
             <div className="preview-wrap">
-              <img
-                src={image}
-                alt="Созданный наглядный материал AI KIDS"
-                className="preview-image"
-              />
+              <img src={image} alt="Готовый лист AI KIDS A4" className="preview-image" />
             </div>
-
             {labels.length > 0 && (
               <div className="labels-panel">
                 <h3>Названия элементов</h3>
-                <ol>
-                  {labels.map((item, index) => (
-                    <li key={`${index}-${item}`}>{item}</li>
-                  ))}
-                </ol>
+                <ol>{labels.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ol>
               </div>
             )}
-
             <div className="actions">
-              <button className="download-button" onClick={downloadImage}>⬇️ Скачать PNG</button>
+              <button className="download-button" onClick={downloadImage}>⬇️ Скачать PNG A4</button>
               <button className="print-button" onClick={printMaterial}>🖨️ Печать / Сохранить PDF</button>
             </div>
-
-            <p className="pdf-note">
-              Для PDF в окне печати выбери «Сохранить как PDF» и формат бумаги A4.
-            </p>
+            <p className="pdf-note">Для PDF в окне печати выбери «Сохранить как PDF» и формат бумаги A4.</p>
             {remaining !== null && <p className="remaining">Осталось генераций: <b>{remaining}</b></p>}
           </section>
         )}
       </section>
 
       <footer className="page-footer">
-        <b>✦ AI KIDS</b>
-        <span>Большие идеи для маленьких открытий</span>
-        <span>Қазақша · Русский</span>
+        <b>✦ AI KIDS</b><span>Большие идеи для маленьких открытий</span><span>Қазақша · Русский</span>
       </footer>
 
       <style jsx>{`
