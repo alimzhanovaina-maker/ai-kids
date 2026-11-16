@@ -181,12 +181,17 @@ export default function VisualStudio() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
 
   async function generate() {
     setBusy(true);
     setError("");
     setImage("");
     setLabels([]);
+    setSaved(false);
+    setSaveMessage("");
 
     try {
       const response = await fetch("/api/visuals", {
@@ -223,6 +228,44 @@ export default function VisualStudio() {
       setError(e instanceof Error ? e.message : "Ошибка генерации.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function saveToCabinet() {
+    if (!image || saving || saved) return;
+    setSaving(true);
+    setSaveMessage("");
+
+    try {
+      const categoryTitle =
+        categories.find(([value]) => value === category)?.[1] || topic.trim();
+      const title = `${kinds.find(([value]) => value === kind)?.[1] || "Материал"}: ${
+        category === "custom" ? topic.trim() : categoryTitle
+      }`;
+
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          kind,
+          topic: category === "custom" ? topic.trim() : categoryTitle,
+          content: image,
+          language,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Не удалось сохранить материал.");
+      }
+
+      setSaved(true);
+      setSaveMessage("Материал сохранён в твоём личном кабинете!");
+    } catch (e) {
+      setSaveMessage(e instanceof Error ? e.message : "Ошибка сохранения.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -397,7 +440,15 @@ export default function VisualStudio() {
             <div className="actions">
               <button className="download-button" onClick={downloadImage}>⬇️ Скачать PNG A4</button>
               <button className="print-button" onClick={printMaterial}>🖨️ Печать / Сохранить PDF</button>
+              <button
+                className="save-button"
+                onClick={saveToCabinet}
+                disabled={saving || saved}
+              >
+                {saving ? "Сохраняем..." : saved ? "✓ Сохранено в кабинете" : "📚 Сохранить в мой кабинет"}
+              </button>
             </div>
+            {saveMessage && <p className={saved ? "save-success" : "save-error"} role="status">{saveMessage}</p>}
             <p className="pdf-note">Для PDF в окне печати выбери «Сохранить как PDF» и формат бумаги A4.</p>
             {remaining !== null && <p className="remaining">Осталось генераций: <b>{remaining}</b></p>}
           </section>
@@ -423,7 +474,7 @@ export default function VisualStudio() {
         .loading-panel{margin-top:22px;padding:35px;text-align:center;border:1px solid #e4eaf5;border-radius:22px;background:#fff}.loading-icon{font-size:42px}.loading-panel h3{margin:10px 0 5px;color:#315b96}.loading-panel p{margin:0;color:#8190a4;font-size:13px}
         .result-panel{margin-top:25px}.preview-wrap{display:flex;justify-content:center;padding:18px;border-radius:18px;background:#f2f5fa}.preview-image{display:block;width:100%;max-width:620px;height:auto;object-fit:contain;border-radius:7px;background:white;box-shadow:0 4px 18px #243b5b12}
         .labels-panel{margin-top:20px;padding:18px 20px;border-radius:15px;background:#fbfcff;border:1px solid #edf0f5}.labels-panel h3{margin:0 0 10px;color:#315b96;font-size:15px}.labels-panel ol{margin:0;padding-left:22px;columns:2;column-gap:35px}.labels-panel li{break-inside:avoid;margin:0 0 7px;color:#5c7191;font-size:13px}
-        .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}.download-button,.print-button{min-height:46px;padding:0 18px;border:0;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer}.download-button{background:#ffdf83;color:#35527b;box-shadow:0 4px 0 #ebc25a}.print-button{background:#e8eefb;color:#42649b}.remaining{margin:12px 0 0;color:#77879e;font-size:12px}
+        .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}.download-button,.print-button,.save-button{min-height:46px;padding:0 18px;border:0;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer}.download-button{background:#ffdf83;color:#35527b;box-shadow:0 4px 0 #ebc25a}.print-button{background:#e8eefb;color:#42649b}.save-button{background:#e1f3e7;color:#347653}.save-button:disabled{opacity:.7;cursor:default}.save-success{margin:12px 0 0;padding:11px 13px;border-radius:11px;background:#edf9f0;color:#347653;font-size:12px;font-weight:800}.save-error{margin:12px 0 0;padding:11px 13px;border-radius:11px;background:#fff1f1;color:#a34545;font-size:12px}.remaining{margin:12px 0 0;color:#77879e;font-size:12px}
         .page-footer{max-width:1050px;display:flex;justify-content:space-between;gap:15px;margin:35px auto 0;padding-top:20px;border-top:1px dashed #e5dfd4;color:#8793a5;font-size:11px}.page-footer b{color:#315b96;font-size:16px}
         @media(max-width:700px){.visual-page{padding:0 14px 25px}.topbar{align-items:flex-start;flex-direction:column;padding:14px 0}.nav{width:100%;gap:16px;overflow-x:auto;padding:4px 0}.nav a{white-space:nowrap;font-size:11px}.intro{margin:28px auto 22px}.intro p{font-size:13px}.form-panel,.result-panel{padding:19px;border-radius:19px}.panel-heading h2{font-size:21px}.form-grid{grid-template-columns:1fr;gap:15px}.field.full{grid-column:auto}.labels-panel ol{columns:1}.actions{flex-direction:column}.download-button,.print-button{width:100%}.page-footer{flex-direction:column;align-items:center;text-align:center}}
       `}</style>
