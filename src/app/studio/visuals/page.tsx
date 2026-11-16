@@ -1,6 +1,6 @@
  "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 const kinds = [
@@ -39,7 +39,6 @@ export default function VisualStudio() {
   const [language, setLanguage] = useState("both");
   const [count, setCount] = useState("8");
   const [style, setStyle] = useState("color");
-
   const [image, setImage] = useState("");
   const [labels, setLabels] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -68,20 +67,19 @@ export default function VisualStudio() {
       });
 
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || "Не удалось создать материал.");
       }
-
-      if (typeof data.image !== "string" || !data.image.startsWith("data:image/")) {
-        throw new Error("Сервис вернул изображение в неизвестном формате. Попробуй ещё раз.");
+      if (
+        typeof data.image !== "string" ||
+        !data.image.startsWith("data:image/")
+      ) {
+        throw new Error("Сервис вернул изображение в неизвестном формате.");
       }
 
       setImage(data.image);
       setLabels(Array.isArray(data.labels) ? data.labels : []);
-      setRemaining(
-        typeof data.remaining === "number" ? data.remaining : null
-      );
+      setRemaining(typeof data.remaining === "number" ? data.remaining : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка генерации.");
     } finally {
@@ -91,11 +89,10 @@ export default function VisualStudio() {
 
   function downloadImage() {
     if (!image) return;
-
     const extension = image.startsWith("data:image/png") ? "png" : "jpg";
     const a = document.createElement("a");
     a.href = image;
-    a.download = `AI-KIDS-visual-material.${extension}`;
+    a.download = `AI-KIDS-${kind}.${extension}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -103,9 +100,7 @@ export default function VisualStudio() {
 
   function printMaterial() {
     if (!image) return;
-
     const win = window.open("", "_blank");
-
     if (!win) {
       setError("Разреши всплывающие окна в браузере, чтобы открыть печать.");
       return;
@@ -120,73 +115,32 @@ export default function VisualStudio() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>AI KIDS — материал для печати</title>
         <style>
-          @page {
-            size: A4 portrait;
-            margin: 8mm;
-          }
-
-          * {
-            box-sizing: border-box;
-          }
-
-          html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            min-height: 100%;
-            background: #ffffff;
-          }
-
-          body {
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-          }
-
-          img {
-            display: block;
-            width: auto;
-            height: auto;
-            max-width: 194mm;
-            max-height: 281mm;
-            object-fit: contain;
-            page-break-inside: avoid;
-          }
-
+          @page { size: A4 portrait; margin: 5mm; }
+          * { box-sizing: border-box; }
+          html, body { margin: 0; padding: 0; width: 100%; background: #fff; }
+          body { display: flex; justify-content: center; align-items: flex-start; }
+          img { display: block; width: auto; height: auto; max-width: 200mm; max-height: 287mm; object-fit: contain; }
           @media print {
-            html, body {
-              width: 100%;
-              height: auto;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-
-            img {
-              max-width: 194mm;
-              max-height: 281mm;
-            }
+            html, body { width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            img { max-width: 200mm; max-height: 287mm; }
           }
         </style>
       </head>
       <body>
         <img id="print-image" src="${image}" alt="Материал AI KIDS для печати" />
         <script>
-          const image = document.getElementById("print-image");
-          image.onload = () => {
-            setTimeout(() => {
-              window.focus();
-              window.print();
-            }, 300);
-          };
-          image.onerror = () => {
-            document.body.innerHTML = "<p>Не удалось загрузить изображение для печати. Закрой окно и попробуй скачать PNG.</p>";
-          };
-          if (image.complete && image.naturalWidth > 0) {
-            setTimeout(() => {
-              window.focus();
-              window.print();
-            }, 300);
+          const img = document.getElementById("print-image");
+          let opened = false;
+          function openPrint() {
+            if (opened) return;
+            opened = true;
+            setTimeout(() => { window.focus(); window.print(); }, 250);
           }
+          img.onload = openPrint;
+          img.onerror = () => {
+            document.body.innerHTML = "<p>Не удалось загрузить изображение. Закрой окно и скачай PNG.</p>";
+          };
+          if (img.complete && img.naturalWidth > 0) openPrint();
         </script>
       </body>
       </html>
@@ -194,31 +148,13 @@ export default function VisualStudio() {
     win.document.close();
   }
 
-  const fieldStyle: CSSProperties = {
-    width: "100%",
-    padding: "12px",
-    border: "1px solid #d9e2f0",
-    borderRadius: "10px",
-    background: "white",
-    color: "#243b5b",
-    fontSize: "15px",
-    marginTop: "7px",
-  };
-
-  const labelStyle: CSSProperties = {
-    display: "block",
-    fontWeight: 600,
-    color: "#315b96",
-    marginBottom: "5px",
-  };
-
   return (
-    <main className="shell" style={{ paddingBottom: 50 }}>
+    <main className="visual-page">
       <header className="topbar">
         <Link className="brand" href="/">
-          <span className="brand-mark">✦</span> AI KIDS
+          <span className="brand-mark">✦</span>
+          <span>AI KIDS</span>
         </Link>
-
         <nav className="nav">
           <Link href="/">Главная</Link>
           <Link href="/studio">Текстовая мастерская</Link>
@@ -226,230 +162,195 @@ export default function VisualStudio() {
         </nav>
       </header>
 
-      <section style={{ marginTop: 35, maxWidth: 950, marginInline: "auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 42 }}>🎨 ✨ 🧩</div>
-          <h1 style={{ color: "#315b96", fontSize: 32, margin: "10px 0" }}>
-            Визуальная мастерская AI KIDS
-          </h1>
-          <p style={{ color: "#718096", fontSize: 16 }}>
-            Создавай яркие наглядные пособия, карточки и задания
-            для дошкольников на русском и казахском языках.
-          </p>
-        </div>
+      <section className="intro">
+        <div className="intro-icon">🎨 ✨ 🧩</div>
+        <span className="eyebrow">ТВОРЧЕСКАЯ МАСТЕРСКАЯ</span>
+        <h1>Визуальная мастерская AI KIDS</h1>
+        <p>
+          Создавай яркие карточки, плакаты и задания для дошкольников
+          на русском и казахском языках.
+        </p>
+      </section>
 
-        <div className="panel" style={{ padding: 24 }}>
+      <section className="workspace">
+        <div className="form-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">ШАГ 1</span>
+              <h2>Настрой свой материал</h2>
+              <p>Выбери формат, возраст и тему занятия.</p>
+            </div>
+            <span className="panel-emoji">🖍️</span>
+          </div>
+
           <div className="form-grid">
-            <div className="field">
-              <label style={labelStyle}>Что будем создавать?</label>
-              <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-                style={fieldStyle}
-              >
+            <label className="field">
+              <span>Что будем создавать?</span>
+              <select value={kind} onChange={(e) => setKind(e.target.value)}>
                 {kinds.map(([value, title]) => (
                   <option key={value} value={value}>{title}</option>
                 ))}
               </select>
-            </div>
+            </label>
 
-            <div className="field">
-              <label style={labelStyle}>Возраст детей</label>
-              <select
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                style={fieldStyle}
-              >
+            <label className="field">
+              <span>Возраст детей</span>
+              <select value={age} onChange={(e) => setAge(e.target.value)}>
                 <option>3 года</option>
                 <option>4 года</option>
                 <option>5 лет</option>
                 <option>6 лет</option>
                 <option>7 лет</option>
               </select>
-            </div>
+            </label>
 
-            <div className="field">
-              <label style={labelStyle}>Выбери категорию</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                style={fieldStyle}
-              >
+            <label className="field">
+              <span>Категория</span>
+              <select value={category} onChange={(e) => setCategory(e.target.value)}>
                 {categories.map(([value, title]) => (
                   <option key={value} value={value}>{title}</option>
                 ))}
               </select>
-            </div>
+            </label>
 
             {category === "custom" && (
-              <div className="field">
-                <label style={labelStyle}>Твоя собственная тема</label>
+              <label className="field full">
+                <span>Твоя собственная тема</span>
                 <input
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="Например: Подводный мир"
-                  style={fieldStyle}
                   maxLength={160}
                 />
-              </div>
+              </label>
             )}
 
-            <div className="field">
-              <label style={labelStyle}>Язык материала</label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                style={fieldStyle}
-              >
+            <label className="field">
+              <span>Язык материала</span>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)}>
                 <option value="ru">Русский</option>
                 <option value="kz">Қазақша</option>
                 <option value="both">Русский + Қазақша</option>
               </select>
-            </div>
+            </label>
 
-            <div className="field">
-              <label style={labelStyle}>Количество элементов</label>
-              <select
-                value={count}
-                onChange={(e) => setCount(e.target.value)}
-                style={fieldStyle}
-              >
+            <label className="field">
+              <span>Количество элементов</span>
+              <select value={count} onChange={(e) => setCount(e.target.value)}>
                 {[2, 4, 6, 8, 10, 12, 15, 20].map((n) => (
                   <option key={n} value={n}>{n} элементов</option>
                 ))}
               </select>
-            </div>
+            </label>
 
-            <div className="field">
-              <label style={labelStyle}>Оформление</label>
-              <select
-                value={style}
-                onChange={(e) => setStyle(e.target.value)}
-                style={fieldStyle}
-              >
+            <label className="field full">
+              <span>Оформление</span>
+              <select value={style} onChange={(e) => setStyle(e.target.value)}>
                 <option value="color">🌈 Цветное</option>
                 <option value="mono">✏️ Чёрно-белое</option>
               </select>
+            </label>
+          </div>
+
+          <div className="print-note">
+            <span>📄</span>
+            <div>
+              <b>Подготовлено для печати на A4</b>
+              <small>Расположение карточек подбирается под выбранное количество.</small>
             </div>
           </div>
 
           <button
             onClick={generate}
             disabled={busy || (category === "custom" && !topic.trim())}
-            className="btn"
-            style={{
-              width: "100%",
-              marginTop: 24,
-              padding: 16,
-              fontSize: 17,
-              border: "none",
-              cursor: busy ? "wait" : "pointer",
-              opacity: busy ? 0.7 : 1,
-            }}
+            className="create-button"
           >
             {busy ? "✨ Создаём твой материал..." : "🎨 Создать наглядный материал"}
           </button>
 
-          <p style={{ color: "#8290a5", fontSize: 12, marginTop: 12 }}>
-            Создание изображения использует баланс OpenAI API.
-            Для первого теста рекомендуем выбрать 2–4 элемента.
+          <p className="cost-note">
+            Генерация использует баланс OpenAI API. Для первого теста можно выбрать 2–4 элемента.
           </p>
         </div>
 
-        {error && (
-          <div
-            role="alert"
-            style={{
-              marginTop: 20,
-              padding: 15,
-              borderRadius: 10,
-              background: "#fff0f0",
-              color: "#a33",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <div className="error-box" role="alert">⚠️ {error}</div>}
 
         {busy && (
-          <div style={{ textAlign: "center", padding: 35, color: "#5277aa" }}>
-            <div style={{ fontSize: 38 }}>🎨</div>
-            <p>Нейросеть готовит иллюстрации. Это может занять некоторое время.</p>
+          <div className="loading-panel">
+            <div className="loading-icon">🎨</div>
+            <h3>Готовим твой материал</h3>
+            <p>Подбираем элементы и создаём иллюстрацию. Это может занять немного времени.</p>
           </div>
         )}
 
         {image && (
-          <section className="panel" style={{ marginTop: 25, padding: 22 }}>
-            <h2 style={{ color: "#315b96", marginTop: 0 }}>
-              ✨ Твой готовый материал
-            </h2>
+          <section className="result-panel">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">ШАГ 2</span>
+                <h2>Твой готовый материал</h2>
+                <p>Проверь лист и выбери, как его сохранить.</p>
+              </div>
+              <span className="panel-emoji">🌟</span>
+            </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                background: "#f5f7fb",
-                padding: 12,
-                borderRadius: 12,
-              }}
-            >
+            <div className="preview-wrap">
               <img
                 src={image}
                 alt="Созданный наглядный материал AI KIDS"
-                style={{
-                  display: "block",
-                  width: "100%",
-                  maxWidth: 650,
-                  height: "auto",
-                  objectFit: "contain",
-                  background: "white",
-                  borderRadius: 6,
-                }}
+                className="preview-image"
               />
             </div>
 
             {labels.length > 0 && (
-              <>
-                <h3 style={{ color: "#315b96" }}>Названия элементов</h3>
+              <div className="labels-panel">
+                <h3>Названия элементов</h3>
                 <ol>
                   {labels.map((item, index) => (
-                    <li key={`${index}-${item}`} style={{ marginBottom: 6 }}>
-                      {item}
-                    </li>
+                    <li key={`${index}-${item}`}>{item}</li>
                   ))}
                 </ol>
-              </>
+              </div>
             )}
 
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 10,
-                marginTop: 20,
-              }}
-            >
-              <button className="btn" onClick={downloadImage}>
-                ⬇️ Скачать PNG
-              </button>
-              <button className="btn secondary" onClick={printMaterial}>
-                🖨️ Печать / Сохранить PDF
-              </button>
+            <div className="actions">
+              <button className="download-button" onClick={downloadImage}>⬇️ Скачать PNG</button>
+              <button className="print-button" onClick={printMaterial}>🖨️ Печать / Сохранить PDF</button>
             </div>
 
-            <p style={{ color: "#718096", fontSize: 12, marginTop: 10 }}>
-              Для PDF нажми «Печать / Сохранить PDF», а в окне печати выбери
-              «Сохранить как PDF» и формат бумаги A4.
+            <p className="pdf-note">
+              Для PDF в окне печати выбери «Сохранить как PDF» и формат бумаги A4.
             </p>
-
-            {remaining !== null && (
-              <p style={{ color: "#8290a5", fontSize: 13 }}>
-                Осталось генераций: {remaining}
-              </p>
-            )}
+            {remaining !== null && <p className="remaining">Осталось генераций: <b>{remaining}</b></p>}
           </section>
         )}
       </section>
+
+      <footer className="page-footer">
+        <b>✦ AI KIDS</b>
+        <span>Большие идеи для маленьких открытий</span>
+        <span>Қазақша · Русский</span>
+      </footer>
+
+      <style jsx>{`
+        .visual-page{min-height:100vh;padding:0 28px 35px;background:linear-gradient(180deg,#fffaf1 0%,#f7f9ff 100%);color:#294363;font-family:Nunito,system-ui,sans-serif}
+        .topbar{max-width:1180px;margin:0 auto;min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #eee7da}
+        .brand{display:flex;align-items:center;gap:10px;color:#294363;font-size:24px;font-weight:1000;text-decoration:none}.brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:#ffdf83;box-shadow:0 4px 0 #ebc25a}
+        .nav{display:flex;align-items:center;gap:25px}.nav a{color:#667b99;text-decoration:none;font-size:13px;font-weight:800}.nav a:hover{color:#e28b62}
+        .intro{max-width:850px;margin:42px auto 30px;text-align:center}.intro-icon{font-size:40px;margin-bottom:10px}.eyebrow{display:block;color:#df9564;font-size:10px;font-weight:1000;letter-spacing:1.6px}.intro h1{margin:10px 0;color:#315b96;font-size:clamp(29px,4vw,39px);font-weight:1000;letter-spacing:-.7px}.intro p{max-width:680px;margin:0 auto;color:#718096;font-size:15px;line-height:1.7}
+        .workspace{max-width:1050px;margin:0 auto}.form-panel,.result-panel{padding:30px;border:1px solid #e8eaf0;border-radius:25px;background:#fff;box-shadow:0 12px 35px #344d7410}
+        .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:23px}.panel-heading h2{margin:5px 0;color:#294363;font-size:25px;font-weight:1000}.panel-heading p{margin:0;color:#8290a5;font-size:13px}.panel-emoji{display:grid;place-items:center;width:58px;height:58px;border-radius:19px;background:#fff0d8;font-size:29px}
+        .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}.field{display:flex;flex-direction:column;gap:8px;color:#47648c;font-size:13px;font-weight:800}.field.full{grid-column:1/-1}.field select,.field input{width:100%;min-height:48px;padding:0 14px;border:1px solid #dce4f0;border-radius:12px;background:#fbfcff;color:#294363;font-size:14px;outline:none}.field select:focus,.field input:focus{border-color:#7898d0;box-shadow:0 0 0 3px #7898d020}
+        .print-note{display:flex;align-items:center;gap:12px;margin-top:22px;padding:14px 16px;border:1px solid #f2e4c9;border-radius:14px;background:#fffaf0}.print-note>span{font-size:25px}.print-note b,.print-note small{display:block}.print-note b{color:#5a6f91;font-size:12px}.print-note small{margin-top:3px;color:#8b98aa;font-size:11px}
+        .create-button{width:100%;min-height:54px;margin-top:20px;border:0;border-radius:14px;background:linear-gradient(100deg,#527bc0,#8b91d0);color:white;font-size:16px;font-weight:1000;cursor:pointer;box-shadow:0 5px 0 #d9dff0;transition:transform .15s,opacity .15s}.create-button:hover{transform:translateY(-1px)}.create-button:disabled{opacity:.55;cursor:wait}
+        .cost-note,.pdf-note{margin:12px 0 0;color:#8996a9;font-size:11px;line-height:1.6}.error-box{margin-top:20px;padding:15px;border:1px solid #f1cccc;border-radius:13px;background:#fff1f1;color:#a33;font-size:14px}
+        .loading-panel{margin-top:22px;padding:35px;text-align:center;border:1px solid #e4eaf5;border-radius:22px;background:#fff}.loading-icon{font-size:42px}.loading-panel h3{margin:10px 0 5px;color:#315b96}.loading-panel p{margin:0;color:#8190a4;font-size:13px}
+        .result-panel{margin-top:25px}.preview-wrap{display:flex;justify-content:center;padding:18px;border-radius:18px;background:#f2f5fa}.preview-image{display:block;width:100%;max-width:620px;height:auto;object-fit:contain;border-radius:7px;background:white;box-shadow:0 4px 18px #243b5b12}
+        .labels-panel{margin-top:20px;padding:18px 20px;border-radius:15px;background:#fbfcff;border:1px solid #edf0f5}.labels-panel h3{margin:0 0 10px;color:#315b96;font-size:15px}.labels-panel ol{margin:0;padding-left:22px;columns:2;column-gap:35px}.labels-panel li{break-inside:avoid;margin:0 0 7px;color:#5c7191;font-size:13px}
+        .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}.download-button,.print-button{min-height:46px;padding:0 18px;border:0;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer}.download-button{background:#ffdf83;color:#35527b;box-shadow:0 4px 0 #ebc25a}.print-button{background:#e8eefb;color:#42649b}.remaining{margin:12px 0 0;color:#77879e;font-size:12px}
+        .page-footer{max-width:1050px;display:flex;justify-content:space-between;gap:15px;margin:35px auto 0;padding-top:20px;border-top:1px dashed #e5dfd4;color:#8793a5;font-size:11px}.page-footer b{color:#315b96;font-size:16px}
+        @media(max-width:700px){.visual-page{padding:0 14px 25px}.topbar{align-items:flex-start;flex-direction:column;padding:14px 0}.nav{width:100%;gap:16px;overflow-x:auto;padding:4px 0}.nav a{white-space:nowrap;font-size:11px}.intro{margin:28px auto 22px}.intro p{font-size:13px}.form-panel,.result-panel{padding:19px;border-radius:19px}.panel-heading h2{font-size:21px}.form-grid{grid-template-columns:1fr;gap:15px}.field.full{grid-column:auto}.labels-panel ol{columns:1}.actions{flex-direction:column}.download-button,.print-button{width:100%}.page-footer{flex-direction:column;align-items:center;text-align:center}}
+      `}</style>
     </main>
   );
 }
