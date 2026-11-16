@@ -213,7 +213,6 @@ export default function MaterialsManager({
           aria-label="Фильтр по типу материала"
         >
           <option value="all">Все типы</option>
-
           {kinds.map((kind) => (
             <option value={kind} key={kind}>
               {getType(kind).label}
@@ -261,16 +260,6 @@ export default function MaterialsManager({
                 >
                   <span className="decoration decoration-one" />
                   <span className="decoration decoration-two" />
-
-                  <img
-                    src={`/api/projects/${item.id}`}
-                    alt={item.title}
-                    loading="lazy"
-                    className="thumbnail"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
-                  />
 
                   <span className="fallback-icon">
                     {type.icon}
@@ -539,31 +528,19 @@ export default function MaterialsManager({
           bottom: -50px;
         }
 
-        .thumbnail {
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: center 42%;
-        }
-
         .fallback-icon {
           position: relative;
-          z-index: 2;
+          z-index: 1;
           font-size: 66px;
           line-height: 1;
           filter: drop-shadow(0 7px 5px #33445a30);
-          text-shadow: 0 2px 8px white;
-          pointer-events: none;
         }
 
         .art-label {
           position: absolute;
           left: 14px;
           bottom: 12px;
-          z-index: 3;
+          z-index: 2;
           padding: 6px 11px;
           border-radius: 20px;
           background: #ffffffdf;
@@ -576,7 +553,7 @@ export default function MaterialsManager({
           position: absolute;
           right: 15px;
           top: 12px;
-          z-index: 3;
+          z-index: 2;
           color: white;
           font-size: 24px;
           font-weight: 900;
