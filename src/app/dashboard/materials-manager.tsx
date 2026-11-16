@@ -194,6 +194,7 @@ export default function MaterialsManager({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Найти материал по названию..."
           />
+
           {query && (
             <button
               className="clear-search"
@@ -212,6 +213,7 @@ export default function MaterialsManager({
           aria-label="Фильтр по типу материала"
         >
           <option value="all">Все типы</option>
+
           {kinds.map((kind) => (
             <option value={kind} key={kind}>
               {getType(kind).label}
@@ -255,87 +257,30 @@ export default function MaterialsManager({
                   href={`/dashboard/materials/${item.id}`}
                   className="material-art"
                   aria-label={`Открыть ${item.title}`}
-                  style={{
-                    position: "relative",
-                    display: "flex",
-                    width: "100%",
-                    height: "150px",
-                    minHeight: "150px",
-                    boxSizing: "border-box",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    overflow: "hidden",
-                    background: type.background,
-                    textDecoration: "none",
-                    borderRadius: "18px 18px 0 0",
-                  }}
+                  style={{ background: type.background }}
                 >
-                  <span
-                    style={{
-                      position: "absolute",
-                      width: "130px",
-                      height: "130px",
-                      borderRadius: "50%",
-                      background: "#ffffff55",
-                      top: "-65px",
-                      left: "-30px",
+                  <span className="decoration decoration-one" />
+                  <span className="decoration decoration-two" />
+
+                  <img
+                    src={`/api/projects/${item.id}`}
+                    alt={item.title}
+                    loading="lazy"
+                    className="thumbnail"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
                     }}
                   />
 
-                  <span
-                    style={{
-                      position: "absolute",
-                      width: "100px",
-                      height: "100px",
-                      borderRadius: "50%",
-                      background: "#ffffff55",
-                      right: "-30px",
-                      bottom: "-50px",
-                    }}
-                  />
-
-                  <span
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      fontSize: "66px",
-                      lineHeight: 1,
-                      filter: "drop-shadow(0 7px 5px #33445a30)",
-                    }}
-                  >
+                  <span className="fallback-icon">
                     {type.icon}
                   </span>
 
-                  <span
-                    style={{
-                      position: "absolute",
-                      left: "14px",
-                      bottom: "12px",
-                      zIndex: 2,
-                      padding: "6px 11px",
-                      borderRadius: "20px",
-                      background: "#ffffffd9",
-                      color: "#526b8e",
-                      fontSize: "10px",
-                      fontWeight: 900,
-                    }}
-                  >
+                  <span className="art-label">
                     {type.label}
                   </span>
 
-                  <span
-                    style={{
-                      position: "absolute",
-                      right: "15px",
-                      top: "12px",
-                      zIndex: 2,
-                      color: "#ffffff",
-                      fontSize: "24px",
-                      fontWeight: 900,
-                    }}
-                  >
-                    ↗
-                  </span>
+                  <span className="art-arrow">↗</span>
                 </Link>
 
                 <div className="material-body">
@@ -346,6 +291,7 @@ export default function MaterialsManager({
                   {editingId === item.id ? (
                     <div className="edit-area">
                       <label>Новое название</label>
+
                       <input
                         value={editTitle}
                         onChange={(event) =>
@@ -413,7 +359,9 @@ export default function MaterialsManager({
                           }
                           disabled={busyId === item.id}
                         >
-                          {busyId === item.id ? "Удаляем..." : "🗑 Удалить"}
+                          {busyId === item.id
+                            ? "Удаляем..."
+                            : "🗑 Удалить"}
                         </button>
                       </div>
                     </>
@@ -426,11 +374,13 @@ export default function MaterialsManager({
       ) : (
         <div className="no-results">
           <span>🔍</span>
+
           <b>
             {items.length
               ? "Ничего не найдено"
               : "Пока нет сохранённых материалов"}
           </b>
+
           <p>
             {items.length
               ? "Попробуй изменить запрос или выбрать другой тип."
@@ -557,7 +507,79 @@ export default function MaterialsManager({
         }
 
         .material-art {
+          position: relative;
+          display: flex;
+          width: 100%;
+          height: 150px;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
           color: inherit;
+          text-decoration: none;
+        }
+
+        .decoration {
+          position: absolute;
+          display: block;
+          border-radius: 50%;
+          background: #ffffff55;
+        }
+
+        .decoration-one {
+          width: 130px;
+          height: 130px;
+          top: -65px;
+          left: -30px;
+        }
+
+        .decoration-two {
+          width: 100px;
+          height: 100px;
+          right: -30px;
+          bottom: -50px;
+        }
+
+        .thumbnail {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center 42%;
+        }
+
+        .fallback-icon {
+          position: relative;
+          z-index: 2;
+          font-size: 66px;
+          line-height: 1;
+          filter: drop-shadow(0 7px 5px #33445a30);
+          text-shadow: 0 2px 8px white;
+          pointer-events: none;
+        }
+
+        .art-label {
+          position: absolute;
+          left: 14px;
+          bottom: 12px;
+          z-index: 3;
+          padding: 6px 11px;
+          border-radius: 20px;
+          background: #ffffffdf;
+          color: #526b8e;
+          font-size: 10px;
+          font-weight: 900;
+        }
+
+        .art-arrow {
+          position: absolute;
+          right: 15px;
+          top: 12px;
+          z-index: 3;
+          color: white;
+          font-size: 24px;
+          font-weight: 900;
         }
 
         .material-body {
