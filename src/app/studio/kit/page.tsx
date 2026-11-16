@@ -1,3 +1,4 @@
+// Full replacement for src/app/studio/kit/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -16,13 +17,15 @@ const options = [
 export default function SmartKitPage() {
   const [topic, setTopic] = useState("");
   const [age, setAge] = useState("4 года");
-  const [language, setLanguage] = useState("both");
+  const [language, setLanguage] = useState("ru");
   const [count, setCount] = useState("8");
   const [difficulty, setDifficulty] = useState("обычный");
   const [selected, setSelected] = useState(["cards", "worksheet", "game", "teacher_guide"]);
   const [kit, setKit] = useState<any>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageStyle, setImageStyle] = useState("color");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
@@ -52,6 +55,35 @@ export default function SmartKitPage() {
       setError(e instanceof Error ? e.message : "Произошла ошибка.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function createIllustrations() {
+    if (!kit?.cards?.length || imageBusy) return;
+    setImageBusy(true);
+    setError("");
+    setSaveMessage("");
+    try {
+      const response = await fetch("/api/kit/illustrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          age: kit.age || age,
+          style: imageStyle,
+          cards: kit.cards.map((card: any) => ({
+            title: card.title,
+            visualDescription: card.visualDescription,
+          })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Не удалось создать иллюстрации.");
+      setKit((old: any) => ({ ...old, illustrations: data.illustrations || [] }));
+      setRemaining(typeof data.remaining === "number" ? data.remaining : remaining);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка создания иллюстраций.");
+    } finally {
+      setImageBusy(false);
     }
   }
 
@@ -99,10 +131,15 @@ export default function SmartKitPage() {
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] || c));
     const list = (items: any[]) => Array.isArray(items) ? `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
     const section = (name: string, body: string) => body ? `<section><h2>${esc(name)}</h2>${body}</section>` : "";
-    const cards = (kit.cards || []).map((x: any) => `<article><h3>${esc(x.number)}. ${esc(x.title)}</h3><p>${esc(x.titleKz)}</p><p>${esc(x.learningFact)}</p><small>${esc(x.visualDescription)}</small></article>`).join("");
+    const cards = (kit.cards || []).map((x: any, i: number) => {
+      const image = kit.illustrations?.[i]
+        ? `<img src="${kit.illustrations[i]}" alt="${esc(x.title)}" />`
+        : "";
+      return `<article>${image}<h3>${esc(x.number)}. ${esc(x.title)}</h3><p>${esc(x.titleKz)}</p><p>${esc(x.learningFact)}</p></article>`;
+    }).join("");
     const tasks = (kit.worksheet?.tasks || []).map((x: any, i: number) => `<article><h3>Задание ${i + 1}</h3><p>${esc(x.instruction)}</p><p>${esc(x.instructionKz)}</p><small>Ответ педагогу: ${esc(x.answer)}</small></article>`).join("");
     const html = `<!doctype html><html lang="ru"><head><meta charset="UTF-8"><title>${esc(kit.title)}</title>
-      <style>@page{size:A4;margin:17mm}body{font-family:Arial,sans-serif;color:#243b5b;line-height:1.5}h1{text-align:center;color:#315b96}h2{color:#315b96;border-bottom:1px solid #d9e2f0;padding-bottom:6px}article{border:1px solid #d9e2f0;border-radius:9px;padding:12px;margin:10px 0;break-inside:avoid}section{margin-top:22px}small{color:#687b91}</style></head><body>
+      <style>@page{size:A4;margin:17mm}body{font-family:Arial,sans-serif;color:#243b5b;line-height:1.5}h1{text-align:center;color:#315b96}h2{color:#315b96;border-bottom:1px solid #d9e2f0;padding-bottom:6px}article{border:1px solid #d9e2f0;border-radius:9px;padding:12px;margin:10px 0;break-inside:avoid}article img{display:block;width:180px;height:180px;object-fit:contain;margin:0 auto 8px}section{margin-top:22px}small{color:#687b91}</style></head><body>
       <h1>${esc(kit.title)}</h1><p><b>Тема:</b> ${esc(kit.topic)}</p><p><b>Возраст:</b> ${esc(kit.age)}</p>
       ${section("Цель комплекта", `<p>${esc(kit.objective)}</p>`)}
       ${section("Необходимые материалы", list(kit.materials))}
@@ -167,7 +204,7 @@ export default function SmartKitPage() {
           <button className="btn" onClick={createKit} disabled={busy} style={{ width: "100%", marginTop: 25, padding: 16, border: "none", cursor: busy ? "wait" : "pointer" }}>
             {busy ? "🧠 AI готовит комплект..." : "✨ Создать умный комплект"}
           </button>
-          <p style={{ color: "#8290a5", fontSize: 12, marginTop: 10 }}>Создание комплекта использует лимит генераций AI KIDS.</p>
+          <p style={{ color: "#8290a5", fontSize: 12, marginTop: 10 }}>Сначала создаётся текст комплекта. Иллюстрации можно добавить отдельной кнопкой ниже.</p>
         </div>
 
         {error && <div style={{ background: "#fff0f0", color: "#a33", padding: 15, borderRadius: 10, marginTop: 18 }}>{error}</div>}
@@ -179,18 +216,33 @@ export default function SmartKitPage() {
           <h3>🧰 Необходимые материалы</h3><ul>{(kit.materials || []).map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
           <h3>👩‍🏫 Вступление педагога</h3><p>{kit.teacherIntroduction}</p>
 
-          {kit.cards && <><h3>🃏 Карточки</h3><div className="form-grid">{kit.cards.map((x: any, i: number) => <div key={i} style={{ border: "1px solid #d9e2f0", borderRadius: 10, padding: 14 }}>
-            <b>{x.number}. {x.title}</b><p>{x.titleKz}</p><p>{x.learningFact}</p><small>{x.visualDescription}</small>
+          {kit.cards?.length > 0 && <div style={{ margin: "24px 0", padding: 18, borderRadius: 14, background: "#f1f6ff", border: "1px solid #d9e2f0" }}>
+            <h3 style={{ marginTop: 0, color: "#315b96" }}>🖼️ Иллюстрации для карточек</h3>
+            <p style={{ marginTop: 0, color: "#667b96", fontSize: 14 }}>Создай отдельные изображения для каждой карточки. Можно выбрать цветной вариант или контур для раскрашивания.</p>
+            <select value={imageStyle} onChange={(e) => setImageStyle(e.target.value)} disabled={imageBusy} style={{ padding: 11, border: "1px solid #d9e2f0", borderRadius: 9, marginRight: 10, marginBottom: 10 }}>
+              <option value="color">Цветные иллюстрации</option>
+              <option value="mono">Чёрно-белые контуры для раскрашивания</option>
+            </select>
+            <button className="btn" onClick={createIllustrations} disabled={imageBusy} style={{ padding: "12px 18px" }}>
+              {imageBusy ? "🎨 Создаём изображения..." : kit.illustrations?.length ? "🔄 Создать иллюстрации заново" : "🎨 Создать иллюстрации"}
+            </button>
+            {imageBusy && <p style={{ color: "#5277aa", fontSize: 13 }}>Генерация может занять немного времени. Не закрывай страницу.</p>}
+            {kit.illustrations?.length > 0 && <p style={{ color: "#287a55", fontWeight: 700, fontSize: 13 }}>✓ Создано иллюстраций: {kit.illustrations.length}</p>}
+          </div>}
+
+          {kit.cards && <><h3>🃏 Карточки</h3><div className="form-grid">{kit.cards.map((x: any, i: number) => <div key={i} style={{ border: "1px solid #d9e2f0", borderRadius: 10, padding: 14, background: "white" }}>
+            {kit.illustrations?.[i] && <img src={kit.illustrations[i]} alt={x.title} style={{ width: "100%", maxWidth: 260, aspectRatio: "1 / 1", objectFit: "contain", display: "block", margin: "0 auto 12px", background: "#fff", borderRadius: 8 }} />}
+            <b>{x.number}. {x.title}</b>{x.titleKz && <p>{x.titleKz}</p>}<p>{x.learningFact}</p>
           </div>)}</div></>}
           {kit.worksheet && <><h3>✏️ Рабочий лист: {kit.worksheet.title}</h3>{kit.worksheet.tasks?.map((x: any, i: number) => <div key={i} style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
-            <b>Задание {i + 1}</b><p>{x.instruction}</p><p>{x.instructionKz}</p><details><summary>Ответ для педагога</summary>{x.answer}</details>
+            <b>Задание {i + 1}</b><p>{x.instruction}</p>{x.instructionKz && <p>{x.instructionKz}</p>}<details><summary>Ответ для педагога</summary>{x.answer}</details>
           </div>)}</>}
           {kit.game && <><h3>🎲 Игра: {kit.game.title}</h3><p>{kit.game.purpose}</p><ul>{kit.game.rules?.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul><b>Вопросы детям</b><ul>{kit.game.teacherQuestions?.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul></>}
           {kit.poster && <><h3>🖼️ Плакат: {kit.poster.title}</h3>{kit.poster.sections?.map((x: any, i: number) => <p key={i}><b>{x.heading}:</b> {x.description}</p>)}</>}
           {kit.coloring && <><h3>🎨 Раскраска: {kit.coloring.title}</h3><p>{kit.coloring.visualDescription}</p></>}
           {kit.puzzle && <><h3>🧩 Пазлы: {kit.puzzle.title}</h3><p>{kit.puzzle.instruction}</p><ul>{kit.puzzle.pieces?.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul></>}
           {kit.teacherGuide && <><h3>📚 Методические рекомендации</h3><h4>Ход занятия</h4><ul>{kit.teacherGuide.lessonFlow?.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul><h4>Советы педагогу</h4><ul>{kit.teacherGuide.teacherTips?.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul><h4>Ожидаемый процесс обучения</h4><ul>{kit.teacherGuide.expectedProcess?.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul></>}
-          {kit.vocabulary && <><h3>🌍 Словарь</h3>{kit.vocabulary.map((x: any, i: number) => <p key={i}>{x.ru} — {x.kz}</p>)}</>}
+          {kit.vocabulary && <><h3>🌍 Словарь</h3>{kit.vocabulary.map((x: any, i: number) => <p key={i}>{[x.ru, x.kz].filter(Boolean).join(" — ")}</p>)}</>}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 25 }}>
             <button className="btn" onClick={saveKit} disabled={saving}>{saving ? "💾 Сохраняем..." : "💾 Сохранить в мой кабинет"}</button>
