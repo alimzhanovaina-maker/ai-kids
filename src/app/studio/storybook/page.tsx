@@ -136,7 +136,7 @@ export default function StorybookStudio() {
       <div className="form-grid">
         <label className="wide">Тема или название сказки<input value={topic} onChange={e => setTopic(e.target.value)} maxLength={180} placeholder="Например: Приключения маленького зайчика" /></label>
         <label>Возраст детей<select value={age} onChange={e => setAge(e.target.value)}><option>3 года</option><option>4 года</option><option>5 лет</option><option>6 лет</option><option>7 лет</option></select></label>
-        <label>Язык книги<select value={language} onChange={e => setLanguage(e.target.value)}><option value="ru">Русский</option><option value="kz">Қазақша</option><option value="both">Русский + қазақша</option></select></label>
+        <label>Язык книги<select value={language} onChange={e => setLanguage(e.target.value as Language)}><option value="ru">Русский</option><option value="kz">Қазақша</option><option value="both">Русский + қазақша</option></select></label>
         <label>Количество страниц<select value={pageCount} onChange={e => setPageCount(Number(e.target.value))}><option value={4}>4 страницы + обложка</option><option value={6}>6 страниц + обложка</option></select></label>
         <label>Стиль рисунков<select value={style} onChange={e => setStyle(e.target.value)}><option value="watercolor">🎨 Нежная акварель</option><option value="storybook">🧸 Объёмные сказочные герои</option><option value="gouache">🌷 Красочная гуашь</option></select></label>
       </div>
