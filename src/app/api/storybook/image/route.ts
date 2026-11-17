@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { toFile } from "openai/uploads";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const characters = typeof body.characters === "string" ? body.characters.trim() : "";
     const scenePrompt = typeof body.scenePrompt === "string" ? body.scenePrompt.trim() : "";
+    const referenceImagePath = typeof body.referenceImagePath === "string" ? body.referenceImagePath.trim() : "";
     const style = styles[body.style] || styles.watercolor;
     if (!characters || !scenePrompt || characters.length > 4000 || scenePrompt.length > 3000) {
       return NextResponse.json({ error: "Не хватает описания сцены или персонажей." }, { status: 400 });
@@ -32,14 +34,38 @@ export async function POST(req: Request) {
     if (!quota?.allowed) return NextResponse.json({ error: "Лимит генераций исчерпан." }, { status: 429 });
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const result = await openai.images.generate({
-      model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
-      size: "1024x1536",
-      quality: "medium",
-      output_format: "jpeg",
-      n: 1,
-      prompt: `Create one complete vertical illustration for a premium ORIGINAL preschool picture book.\n\nART STYLE: ${style}\n\nCONSISTENT CHARACTERS (follow EXACTLY across all scenes): ${characters}\n\nSCENE TO DRAW: ${scenePrompt}\n\nComposition: portrait 2:3, full-bleed illustration, detailed immersive scenery, distinct action and viewpoint for this scene, cohesive color palette, readable friendly expressions, expressive gestures, excellent professional quality. Preserve exact character appearance and clothing from the character bible. Absolutely NO text, NO letters, NO words, NO numbers, NO speech bubbles, NO borders, NO watermarks, NO multiple panels.`,
-    });
+    const prompt = `Create one complete vertical illustration for a premium ORIGINAL preschool picture book.\n\nART STYLE: ${style}\n\nCONSISTENT CHARACTERS (follow EXACTLY): ${characters}\n\nSCENE TO DRAW: ${scenePrompt}\n\nCharacter continuity is essential. Keep every recurring character visually identical to the reference: same species, face shape, eye color, fur color and markings, body proportions, clothing, accessories, and age. Do not redesign, recolor, replace, or add features to the characters. Only the pose, expression, action, camera angle, and environment may change to fit this page.\n\nComposition: portrait 2:3, full-bleed illustration, detailed immersive scenery, cohesive color palette, readable friendly expressions, professional children's picture-book quality. Absolutely NO text, NO letters, NO words, NO numbers, NO speech bubbles, NO borders, NO watermarks, NO multiple panels.`;
+
+    let result;
+    if (referenceImagePath) {
+      if (!referenceImagePath.startsWith(`${user.id}/`) || referenceImagePath.includes("..")) {
+        return NextResponse.json({ error: "Недопустимый путь к изображению-образцу." }, { status: 400 });
+      }
+      const { data: referenceBlob, error: referenceError } = await supabase.storage
+        .from("storybooks")
+        .download(referenceImagePath);
+      if (referenceError || !referenceBlob) throw new Error("Не удалось загрузить обложку для сохранения внешности персонажей.");
+      const referenceBuffer = Buffer.from(await referenceBlob.arrayBuffer());
+      const referenceFile = await toFile(referenceBuffer, "character-reference.jpg", { type: "image/jpeg" });
+      result = await openai.images.edit({
+        model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
+        image: referenceFile,
+        prompt,
+        size: "1024x1536",
+        quality: "medium",
+        output_format: "jpeg",
+      });
+    } else {
+      result = await openai.images.generate({
+        model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
+        size: "1024x1536",
+        quality: "medium",
+        output_format: "jpeg",
+        n: 1,
+        prompt,
+      });
+    }
+
     const base64 = result.data?.[0]?.b64_json;
     if (!base64) throw new Error("Модель не вернула изображение.");
 
