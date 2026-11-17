@@ -11,8 +11,10 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [plan, setPlan] = useState("free");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState("ru");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingLanguage, setSavingLanguage] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [password, setPassword] = useState("");
@@ -36,6 +38,7 @@ export default function ProfilePage() {
       setName(user.user_metadata?.full_name || "");
       setEmail(user.email || "");
       setAvatarUrl(user.user_metadata?.avatar_url || "");
+      setPreferredLanguage(user.user_metadata?.preferred_language === "kz" ? "kz" : "ru");
 
       const { data } = await supabase
         .from("profiles")
@@ -73,6 +76,30 @@ export default function ProfilePage() {
 
     setMessage("Имя профиля успешно обновлено.");
     router.refresh();
+  }
+
+  async function saveLanguage() {
+    setSavingLanguage(true);
+    setMessage("");
+    setError("");
+
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { preferred_language: preferredLanguage },
+    });
+
+    setSavingLanguage(false);
+
+    if (updateError) {
+      setError("Не удалось сохранить язык. Попробуй ещё раз.");
+      return;
+    }
+
+    setMessage(
+      preferredLanguage === "kz"
+        ? "Таңдалған тіл сақталды. Интерфейсті толық аудару келесі кезеңде орындалады."
+        : "Выбранный язык сохранён. Полный перевод интерфейса будет добавлен на следующем этапе."
+    );
   }
 
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
@@ -179,7 +206,7 @@ export default function ProfilePage() {
       <section className="intro">
         <span className="eyebrow">ТВОЙ АККАУНТ</span>
         <h1>Профиль педагога 🌷</h1>
-        <p>Управляй личными данными, фотографией, паролем и тарифом.</p>
+        <p>Управляй личными данными, фотографией, паролем и настройками.</p>
       </section>
 
       <section className="profile-grid">
@@ -223,6 +250,31 @@ export default function ProfilePage() {
                 {saving ? "Сохраняем…" : "Сохранить изменения"}
               </button>
             </form>
+          </article>
+
+          <article className="panel settings-panel">
+            <h2>🌐 Язык интерфейса</h2>
+            <p className="muted">Выбери предпочитаемый язык для своего аккаунта.</p>
+            <label htmlFor="preferred-language">Предпочитаемый язык</label>
+            <select
+              id="preferred-language"
+              value={preferredLanguage}
+              onChange={(event) => setPreferredLanguage(event.target.value)}
+            >
+              <option value="ru">🇷🇺 Русский</option>
+              <option value="kz">🇰🇿 Қазақша</option>
+            </select>
+            <small className="hint">
+              Выбор сохранится в настройках аккаунта. Переключение всего интерфейса будет добавлено отдельно.
+            </small>
+            <button
+              className="save-button"
+              type="button"
+              onClick={saveLanguage}
+              disabled={savingLanguage}
+            >
+              {savingLanguage ? "Сохраняем…" : "Сохранить язык"}
+            </button>
           </article>
 
           <article className="panel password-panel">
@@ -307,12 +359,12 @@ export default function ProfilePage() {
         .muted { margin:0 0 20px; }
         form { display:grid; gap:9px; }
         label { margin-top:5px; color:#526b8e; font-size:12px; font-weight:1000; }
-        input:not([type="file"]) { width:100%; min-height:46px; padding:0 13px; border:2px solid #e4eaf3; border-radius:12px; outline:none; background:#fff; color:#294363; font:inherit; font-size:13px; }
-        input:focus { border-color:#91a9dc; }
+        input:not([type="file"]),select { width:100%; min-height:46px; padding:0 13px; border:2px solid #e4eaf3; border-radius:12px; outline:none; background:#fff; color:#294363; font:inherit; font-size:13px; }
+        input:focus,select:focus { border-color:#91a9dc; }
         input[readonly] { background:#f5f7fa; color:#8190a4; }
         input[type="file"] { width:100%; padding:9px; border:2px dashed #dce5f2; border-radius:12px; background:#fff; color:#647995; font-size:12px; }
         .photo-control { display:grid; gap:8px; margin:15px 0 18px; }
-        .hint { color:#8996a8; font-size:10px; }
+        .hint { color:#8996a8; font-size:10px; line-height:1.5; }
         .save-button { min-height:47px; margin-top:10px; border:0; border-radius:13px; background:#527bc0; color:#fff; font:inherit; font-size:13px; font-weight:1000; cursor:pointer; }
         .save-button:disabled { opacity:.6; cursor:not-allowed; }
         .success,.error { margin:4px 0; padding:11px 13px; border-radius:10px; font-size:12px; }
