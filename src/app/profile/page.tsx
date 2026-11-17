@@ -10,8 +10,13 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [plan, setPlan] = useState("free");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordAgain, setPasswordAgain] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -23,7 +28,6 @@ export default function ProfilePage() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (!active) return;
-
       if (userError || !user) {
         router.replace("/login");
         return;
@@ -31,6 +35,7 @@ export default function ProfilePage() {
 
       setName(user.user_metadata?.full_name || "");
       setEmail(user.email || "");
+      setAvatarUrl(user.user_metadata?.avatar_url || "");
 
       const { data } = await supabase
         .from("profiles")
@@ -70,6 +75,93 @@ export default function ProfilePage() {
     router.refresh();
   }
 
+  async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setMessage("");
+    setError("");
+
+    if (!file.type.startsWith("image/")) {
+      setError("Выбери изображение в формате JPG, PNG или WebP.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setError("Размер фотографии не должен превышать 3 МБ.");
+      event.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setUploading(false);
+      setError("Сначала войди в аккаунт.");
+      return;
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const filePath = `${user.id}/avatar.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      setUploading(false);
+      setError("Не удалось загрузить фото. Проверь настройки хранилища avatars в Supabase.");
+      return;
+    }
+
+    const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    const newAvatarUrl = `${publicData.publicUrl}?t=${Date.now()}`;
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: { avatar_url: newAvatarUrl },
+    });
+
+    setUploading(false);
+
+    if (metadataError) {
+      setError("Фото загружено, но не удалось обновить профиль. Попробуй ещё раз.");
+      return;
+    }
+
+    setAvatarUrl(newAvatarUrl);
+    setMessage("Фотография профиля обновлена.");
+    event.target.value = "";
+  }
+
+  async function updatePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+
+    if (password.length < 8) {
+      setError("Новый пароль должен содержать не менее 8 символов.");
+      return;
+    }
+    if (password !== passwordAgain) {
+      setError("Пароли не совпадают. Проверь оба поля.");
+      return;
+    }
+
+    setChangingPassword(true);
+    const supabase = createClient();
+    const { error: passwordError } = await supabase.auth.updateUser({ password });
+    setChangingPassword(false);
+
+    if (passwordError) {
+      setError("Не удалось изменить пароль. Попробуй ещё раз.");
+      return;
+    }
+
+    setPassword("");
+    setPasswordAgain("");
+    setMessage("Пароль успешно изменён.");
+  }
+
   if (loading) {
     return <main className="profile-shell"><p className="loading">Загружаем профиль…</p></main>;
   }
@@ -87,38 +179,90 @@ export default function ProfilePage() {
       <section className="intro">
         <span className="eyebrow">ТВОЙ АККАУНТ</span>
         <h1>Профиль педагога 🌷</h1>
-        <p>Здесь можно изменить имя, посмотреть данные аккаунта и свой тариф.</p>
+        <p>Управляй личными данными, фотографией, паролем и тарифом.</p>
       </section>
 
       <section className="profile-grid">
-        <article className="panel account-panel">
-          <div className="avatar">👩‍🏫</div>
-          <h2>Личные данные</h2>
-          <p className="muted">Имя будет отображаться в личном кабинете.</p>
+        <div className="main-column">
+          <article className="panel account-panel">
+            <div className="avatar">
+              {avatarUrl ? <img src={avatarUrl} alt="Фото профиля" /> : "👩‍🏫"}
+            </div>
+            <h2>Личные данные</h2>
+            <p className="muted">Имя будет отображаться в личном кабинете.</p>
 
-          <form onSubmit={saveProfile}>
-            <label htmlFor="profile-name">Имя</label>
-            <input
-              id="profile-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Введите имя"
-              maxLength={80}
-              required
-            />
+            <div className="photo-control">
+              <label htmlFor="profile-photo">Фотография педагога</label>
+              <input
+                id="profile-photo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={uploadAvatar}
+                disabled={uploading}
+              />
+              <small className="hint">JPG, PNG или WebP. Максимальный размер — 3 МБ.</small>
+              {uploading && <small className="hint">Загружаем фотографию…</small>}
+            </div>
 
-            <label htmlFor="profile-email">Электронная почта</label>
-            <input id="profile-email" value={email} readOnly />
-            <small className="hint">Email используется для входа и здесь не изменяется.</small>
+            <form onSubmit={saveProfile}>
+              <label htmlFor="profile-name">Имя</label>
+              <input
+                id="profile-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Введите имя"
+                maxLength={80}
+                required
+              />
 
-            {message && <p className="success" role="status">{message}</p>}
-            {error && <p className="error" role="alert">{error}</p>}
+              <label htmlFor="profile-email">Электронная почта</label>
+              <input id="profile-email" value={email} readOnly />
+              <small className="hint">Email используется для входа и здесь не изменяется.</small>
 
-            <button className="save-button" type="submit" disabled={saving || !name.trim()}>
-              {saving ? "Сохраняем…" : "Сохранить изменения"}
-            </button>
-          </form>
-        </article>
+              <button className="save-button" type="submit" disabled={saving || !name.trim()}>
+                {saving ? "Сохраняем…" : "Сохранить изменения"}
+              </button>
+            </form>
+          </article>
+
+          <article className="panel password-panel">
+            <h2>🔐 Изменение пароля</h2>
+            <p className="muted">Придумай новый пароль и введи его дважды для проверки.</p>
+            <form onSubmit={updatePassword}>
+              <label htmlFor="new-password">Новый пароль</label>
+              <input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Не менее 8 символов"
+                minLength={8}
+                required
+              />
+              <label htmlFor="repeat-password">Повтори новый пароль</label>
+              <input
+                id="repeat-password"
+                type="password"
+                autoComplete="new-password"
+                value={passwordAgain}
+                onChange={(event) => setPasswordAgain(event.target.value)}
+                placeholder="Повтори пароль"
+                minLength={8}
+                required
+              />
+              <button className="save-button" type="submit" disabled={changingPassword || !password || !passwordAgain}>
+                {changingPassword ? "Изменяем…" : "Изменить пароль"}
+              </button>
+            </form>
+          </article>
+
+          {(message || error) && (
+            <p className={error ? "error" : "success"} role={error ? "alert" : "status"}>
+              {error || message}
+            </p>
+          )}
+        </div>
 
         <aside className="side-column">
           <article className="panel plan-panel">
@@ -153,24 +297,27 @@ export default function ProfilePage() {
         .eyebrow { color:#df9564; font-size:10px; font-weight:1000; letter-spacing:1.3px; }
         .intro h1 { margin:10px 0; font-size:clamp(30px,5vw,43px); line-height:1.15; }
         .intro p,.muted { color:#77879e; font-size:13px; line-height:1.6; }
-        .profile-grid { display:grid; grid-template-columns:1.2fr .8fr; gap:20px; max-width:850px; margin:0 auto; align-items:start; }
+        .profile-grid { display:grid; grid-template-columns:1.2fr .8fr; gap:20px; max-width:950px; margin:0 auto; align-items:start; }
+        .main-column,.side-column { display:grid; gap:18px; }
         .panel { padding:25px; border:2px solid #e8edf5; border-radius:22px; background:#fff; box-shadow:0 6px 0 #e9e5de; }
         .account-panel { background:linear-gradient(160deg,#fffaf0,#fff 55%); }
-        .avatar { display:grid; place-items:center; width:62px; height:62px; margin-bottom:13px; border-radius:20px; background:#ffefd5; font-size:31px; }
+        .avatar { display:grid; place-items:center; width:76px; height:76px; margin-bottom:13px; overflow:hidden; border-radius:22px; background:#ffefd5; font-size:35px; }
+        .avatar img { width:100%; height:100%; object-fit:cover; }
         h2 { margin:0 0 7px; font-size:21px; }
         .muted { margin:0 0 20px; }
         form { display:grid; gap:9px; }
         label { margin-top:5px; color:#526b8e; font-size:12px; font-weight:1000; }
-        input { width:100%; min-height:46px; padding:0 13px; border:2px solid #e4eaf3; border-radius:12px; outline:none; background:#fff; color:#294363; font:inherit; font-size:13px; }
+        input:not([type="file"]) { width:100%; min-height:46px; padding:0 13px; border:2px solid #e4eaf3; border-radius:12px; outline:none; background:#fff; color:#294363; font:inherit; font-size:13px; }
         input:focus { border-color:#91a9dc; }
         input[readonly] { background:#f5f7fa; color:#8190a4; }
+        input[type="file"] { width:100%; padding:9px; border:2px dashed #dce5f2; border-radius:12px; background:#fff; color:#647995; font-size:12px; }
+        .photo-control { display:grid; gap:8px; margin:15px 0 18px; }
         .hint { color:#8996a8; font-size:10px; }
         .save-button { min-height:47px; margin-top:10px; border:0; border-radius:13px; background:#527bc0; color:#fff; font:inherit; font-size:13px; font-weight:1000; cursor:pointer; }
         .save-button:disabled { opacity:.6; cursor:not-allowed; }
-        .success,.error { margin:4px 0; padding:10px 12px; border-radius:10px; font-size:11px; }
+        .success,.error { margin:4px 0; padding:11px 13px; border-radius:10px; font-size:12px; }
         .success { background:#e8f5eb; color:#397052; }
         .error { background:#fff0ed; color:#a95045; }
-        .side-column { display:grid; gap:18px; }
         .plan-panel { background:linear-gradient(145deg,#eef0ff,#fff); border-color:#dfe3fa; }
         .plan-title { margin-top:12px; font-size:25px; font-weight:1000; }
         .plan-panel p { margin:5px 0 15px; color:#77879e; font-size:12px; }
