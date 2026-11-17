@@ -69,6 +69,7 @@ export default async function Dashboard() {
           <Link href="/studio">Мастерская</Link>
           <Link href="/studio/kit">Умный комплект</Link>
           <Link href="/studio/visuals">Наглядность</Link>
+          <Link href="/profile">Мой профиль 👤</Link>
         </nav>
 
         <form action="/auth/signout" method="post">
