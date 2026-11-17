@@ -65,6 +65,7 @@ export default function Studio() {
 
   useEffect(() => {
     const selected = new URLSearchParams(window.location.search).get("type");
+    if (selected === "story") { window.location.replace("/studio/storybook"); return; }
     if (selected && labels[selected]) setType(selected);
   }, []);
 
@@ -134,7 +135,7 @@ export default function Studio() {
       <section className="tools-section">
         <div className="section-heading"><div><span className="eyebrow">ВЫБИРАЙ И ТВОРИ</span><h2>Что будем создавать?</h2><p>Каждый инструмент — маленькое творческое приключение.</p></div><span className="heading-mascot">🐰</span></div>
         <div className="tools-grid">
-          {tools.map((tool) => <button type="button" key={tool.id} onClick={() => setType(tool.id)} className={`tool-card ${tool.color} ${type === tool.id ? "active" : ""}`}>
+          {tools.map((tool) => <button type="button" key={tool.id} onClick={() => tool.id === "story" ? window.location.assign("/studio/storybook") : setType(tool.id)} className={`tool-card ${tool.color} ${type === tool.id ? "active" : ""}`}>
             <span className="tool-art">{tool.emoji}</span><b>{tool.title}</b><small>{tool.note}</small><i>{type === tool.id ? "✓ Выбрано" : "Выбрать →"}</i>
           </button>)}
         </div>
@@ -145,7 +146,7 @@ export default function Studio() {
         <div className="builder-card">
           <div className="builder-title"><span>🪄</span><div><b>Настрой своё задание</b><small>Все параметры можно изменить перед генерацией.</small></div></div>
           <div className="form-grid">
-            <div className="field"><label>Что создаём?</label><select value={type} onChange={(e) => setType(e.target.value)}>{Object.entries(labels).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select></div>
+            <div className="field"><label>Что создаём?</label><select value={type} onChange={(e) => e.target.value === "story" ? window.location.assign("/studio/storybook") : setType(e.target.value)}>{Object.entries(labels).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select></div>
             <div className="field"><label>Возраст детей</label><select value={age} onChange={(e) => setAge(e.target.value)}><option>3 года</option><option>4 года</option><option>5 лет</option><option>6 лет</option></select></div>
             <div className="field field-wide"><label>Тема занятия</label><input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Например: Волшебный мир животных" /></div>
             <div className="field"><label>Язык материала</label><select value={language} onChange={(e) => setLanguage(e.target.value)}><option value="both">Русский + қазақша</option><option value="ru">Русский</option><option value="kz">Қазақша</option></select></div>
