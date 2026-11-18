@@ -22,26 +22,32 @@ export default async function Dashboard() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan, monthly_generations, quota_reset_at")
+    .select("monthly_generations, quota_reset_at")
     .eq("id", user.id)
     .maybeSingle();
 
-  const plan = profile?.plan === "pro" ? "pro" : "free";
-  const planName = plan === "pro" ? "PRO" : "START";
-  const generationLimit = plan === "pro" ? 300 : 10;
-
+  const generationLimit = 20;
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const quotaResetAt = profile?.quota_reset_at
     ? new Date(profile.quota_reset_at)
     : null;
-  const quotaIsCurrent = quotaResetAt !== null && quotaResetAt >= monthStart;
+
+  const todayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+
+  const quotaIsCurrent =
+    quotaResetAt !== null && quotaResetAt >= todayStart;
 
   const generationsUsed = quotaIsCurrent
     ? Math.max(0, profile?.monthly_generations ?? 0)
     : 0;
 
-  const generationsLeft = Math.max(0, generationLimit - generationsUsed);
+  const generationsLeft = Math.max(
+    0,
+    generationLimit - generationsUsed
+  );
+
   const generationPercent = Math.min(
     100,
     Math.round((generationsUsed / generationLimit) * 100)
@@ -112,22 +118,26 @@ export default async function Dashboard() {
         <article className="stat peach">
           <span>🎀</span>
           <div className="stat-content">
-            <small>ТВОЙ ТАРИФ</small>
-            <strong>{planName}</strong>
-            <p>Использовано: {generationsUsed} из {generationLimit}</p>
+            <small>БЕСПЛАТНЫЙ ДОСТУП</small>
+            <strong>AI KIDS 🌷</strong>
+            <p>
+              Использовано сегодня: {generationsUsed} из {generationLimit}
+            </p>
             <p>Осталось генераций: {generationsLeft}</p>
+
             <div
               className="quota-track"
               role="progressbar"
-              aria-label="Использование месячного лимита генераций"
+              aria-label="Использование дневного лимита генераций"
               aria-valuemin={0}
               aria-valuemax={generationLimit}
               aria-valuenow={generationsUsed}
             >
               <span style={{ width: `${generationPercent}%` }} />
             </div>
+
             <small className="quota-caption">
-              Использовано {generationPercent}% месячного лимита
+              Использовано {generationPercent}% дневного лимита
             </small>
           </div>
         </article>
@@ -223,6 +233,8 @@ export default async function Dashboard() {
           font-size: 23px;
           font-weight: 1000;
           white-space: nowrap;
+          text-decoration: none;
+          color: #294363;
         }
         .brand > span:last-child { color: #f4a64e; }
         .logo {
@@ -242,6 +254,10 @@ export default async function Dashboard() {
           color: #647995;
           font-size: 12px;
           font-weight: 900;
+        }
+        nav a {
+          color: inherit;
+          text-decoration: none;
         }
         nav a:hover { color: #df865f; }
         .logout, .outline {
@@ -276,7 +292,11 @@ export default async function Dashboard() {
           border-radius: 50%;
           background: #ffffff13;
         }
-        .welcome-copy { position: relative; z-index: 2; max-width: 680px; }
+        .welcome-copy {
+          position: relative;
+          z-index: 2;
+          max-width: 680px;
+        }
         .eyebrow {
           color: #df9564;
           font-size: 10px;
@@ -317,6 +337,7 @@ export default async function Dashboard() {
           color: #35527b;
           font-weight: 1000;
           box-shadow: 0 4px 0 #e8bd52;
+          text-decoration: none;
         }
         .welcome-note {
           display: inline-block;
@@ -330,7 +351,12 @@ export default async function Dashboard() {
           z-index: 1;
           filter: drop-shadow(0 8px 5px #304b762b);
         }
-        .rainbow { right: 90px; top: 16px; font-size: 95px; transform: rotate(8deg); }
+        .rainbow {
+          right: 90px;
+          top: 16px;
+          font-size: 95px;
+          transform: rotate(8deg);
+        }
         .fox { right: 36px; bottom: 22px; font-size: 78px; }
         .bear { right: 245px; bottom: 17px; font-size: 68px; }
         .book { right: 145px; top: 115px; font-size: 66px; }
@@ -351,9 +377,18 @@ export default async function Dashboard() {
           border-radius: 20px;
           box-shadow: 0 5px 0 #e9e5de;
         }
-        .stat.peach { background: #fff0d7; border-color: #f9e6c4; }
-        .stat.blue { background: #e5edff; border-color: #dce6fb; }
-        .stat.mint { background: #e2f4e8; border-color: #d8eddf; }
+        .stat.peach {
+          background: #fff0d7;
+          border-color: #f9e6c4;
+        }
+        .stat.blue {
+          background: #e5edff;
+          border-color: #dce6fb;
+        }
+        .stat.mint {
+          background: #e2f4e8;
+          border-color: #d8eddf;
+        }
         .stat > span {
           width: 49px;
           height: 49px;
@@ -378,8 +413,15 @@ export default async function Dashboard() {
           font-size: 21px;
           font-weight: 1000;
         }
-        .stat p { margin: 3px 0 0; color: #7d8ca1; font-size: 11px; }
-        .stat-content { min-width: 0; flex: 1; }
+        .stat p {
+          margin: 3px 0 0;
+          color: #7d8ca1;
+          font-size: 11px;
+        }
+        .stat-content {
+          min-width: 0;
+          flex: 1;
+        }
         .quota-track {
           width: 100%;
           height: 8px;
@@ -408,10 +450,31 @@ export default async function Dashboard() {
           gap: 15px;
           margin-bottom: 19px;
         }
-        .section-head h2 { margin: 5px 0; color: #294363; font-size: 29px; font-weight: 1000; }
-        .section-head p { margin: 0; color: #77879e; font-size: 13px; }
-        .outline { display: inline-flex; align-items: center; min-height: 43px; font-size: 12px; }
-        .alert { padding: 15px; border-radius: 14px; background: #fff0e8; color: #a45b43; font-weight: 800; }
+        .section-head h2 {
+          margin: 5px 0;
+          color: #294363;
+          font-size: 29px;
+          font-weight: 1000;
+        }
+        .section-head p {
+          margin: 0;
+          color: #77879e;
+          font-size: 13px;
+        }
+        .outline {
+          display: inline-flex;
+          align-items: center;
+          min-height: 43px;
+          font-size: 12px;
+          text-decoration: none;
+        }
+        .alert {
+          padding: 15px;
+          border-radius: 14px;
+          background: #fff0e8;
+          color: #a45b43;
+          font-weight: 800;
+        }
         .library-promo {
           display: flex;
           align-items: center;
@@ -423,8 +486,15 @@ export default async function Dashboard() {
           background: linear-gradient(110deg,#f0edff,#fff1e8);
         }
         .promo-icon { font-size: 42px; }
-        .library-promo h2 { margin: 0 0 5px; font-size: 19px; }
-        .library-promo p { margin: 0; color: #77879e; font-size: 12px; }
+        .library-promo h2 {
+          margin: 0 0 5px;
+          font-size: 19px;
+        }
+        .library-promo p {
+          margin: 0;
+          color: #77879e;
+          font-size: 12px;
+        }
         .library-promo a {
           margin-left: auto;
           color: #526fa7;
@@ -444,8 +514,18 @@ export default async function Dashboard() {
         }
         .bottom > span { font-size: 35px; }
         .bottom b { color: #3b6a53; font-size: 14px; }
-        .bottom p { margin: 4px 0 0; color: #6c8a79; font-size: 12px; }
-        .bottom > a { margin-left: auto; color: #477b60; font-size: 12px; font-weight: 1000; white-space: nowrap; }
+        .bottom p {
+          margin: 4px 0 0;
+          color: #6c8a79;
+          font-size: 12px;
+        }
+        .bottom > a {
+          margin-left: auto;
+          color: #477b60;
+          font-size: 12px;
+          font-weight: 1000;
+          white-space: nowrap;
+        }
         footer {
           display: flex;
           align-items: center;
@@ -467,23 +547,68 @@ export default async function Dashboard() {
           .dashboard { padding: 12px 15px 28px; }
           .header { flex-wrap: wrap; }
           .brand { font-size: 20px; }
-          nav { order: 3; width: 100%; overflow: auto; padding: 7px 0; }
-          .welcome { min-height: 330px; padding: 25px 20px; align-items: flex-start; }
+          nav {
+            order: 3;
+            width: 100%;
+            overflow: auto;
+            padding: 7px 0;
+          }
+          .welcome {
+            min-height: 330px;
+            padding: 25px 20px;
+            align-items: flex-start;
+          }
           .welcome-copy h1 { font-size: 35px; }
           .welcome-copy p { font-size: 13px; }
-          .welcome-art .rainbow { font-size: 58px; right: 5px; top: auto; bottom: 10px; opacity: .6; }
-          .welcome-art .fox { font-size: 50px; right: 10px; bottom: 5px; opacity: .65; }
-          .welcome-art .bear { font-size: 45px; right: 115px; bottom: 5px; opacity: .65; }
-          .welcome-art .book { font-size: 44px; right: 90px; top: auto; bottom: 65px; }
-          .stats { grid-template-columns: 1fr; margin: 22px 0 33px; }
+          .welcome-art .rainbow {
+            font-size: 58px;
+            right: 5px;
+            top: auto;
+            bottom: 10px;
+            opacity: .6;
+          }
+          .welcome-art .fox {
+            font-size: 50px;
+            right: 10px;
+            bottom: 5px;
+            opacity: .65;
+          }
+          .welcome-art .bear {
+            font-size: 45px;
+            right: 115px;
+            bottom: 5px;
+            opacity: .65;
+          }
+          .welcome-art .book {
+            font-size: 44px;
+            right: 90px;
+            top: auto;
+            bottom: 65px;
+          }
+          .stats {
+            grid-template-columns: 1fr;
+            margin: 22px 0 33px;
+          }
           .stat:last-child { grid-column: auto; }
-          .section-head { align-items: flex-start; flex-direction: column; }
+          .section-head {
+            align-items: flex-start;
+            flex-direction: column;
+          }
           .section-head h2 { font-size: 25px; }
-          .library-promo { align-items: flex-start; flex-wrap: wrap; }
+          .library-promo {
+            align-items: flex-start;
+            flex-wrap: wrap;
+          }
           .library-promo a { margin-left: 58px; }
-          .bottom { align-items: flex-start; flex-wrap: wrap; }
+          .bottom {
+            align-items: flex-start;
+            flex-wrap: wrap;
+          }
           .bottom > a { margin-left: 50px; }
-          footer { flex-direction: column; text-align: center; }
+          footer {
+            flex-direction: column;
+            text-align: center;
+          }
         }
       `}</style>
     </main>
