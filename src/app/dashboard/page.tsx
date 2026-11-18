@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -10,9 +11,7 @@ export default async function Dashboard() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { data: projects, error } = await supabase
     .from("projects")
@@ -21,7 +20,6 @@ export default async function Dashboard() {
     .order("created_at", { ascending: false })
     .limit(100);
 
-  // Загружаем настоящий тариф и счётчик генераций из профиля пользователя.
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan, monthly_generations, quota_reset_at")
@@ -32,16 +30,17 @@ export default async function Dashboard() {
   const planName = plan === "pro" ? "PRO" : "START";
   const generationLimit = plan === "pro" ? 300 : 10;
 
-  // Если период квоты уже закончился, показываем ноль использованных генераций.
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const quotaResetAt = profile?.quota_reset_at
     ? new Date(profile.quota_reset_at)
     : null;
   const quotaIsCurrent = quotaResetAt !== null && quotaResetAt >= monthStart;
+
   const generationsUsed = quotaIsCurrent
     ? Math.max(0, profile?.monthly_generations ?? 0)
     : 0;
+
   const generationsLeft = Math.max(0, generationLimit - generationsUsed);
   const generationPercent = Math.min(
     100,
@@ -69,6 +68,7 @@ export default async function Dashboard() {
           <Link href="/studio">Мастерская</Link>
           <Link href="/studio/kit">Умный комплект</Link>
           <Link href="/studio/visuals">Наглядность</Link>
+          <Link href="/dashboard/library">📚 Библиотека сказок</Link>
           <Link href="/profile">Мой профиль 👤</Link>
         </nav>
 
@@ -126,7 +126,9 @@ export default async function Dashboard() {
             >
               <span style={{ width: `${generationPercent}%` }} />
             </div>
-            <small className="quota-caption">Использовано {generationPercent}% месячного лимита</small>
+            <small className="quota-caption">
+              Использовано {generationPercent}% месячного лимита
+            </small>
           </div>
         </article>
 
@@ -173,21 +175,24 @@ export default async function Dashboard() {
         )}
       </section>
 
-      <section className="bottom">
-        <span>🌼</span>
-
+      <section className="library-promo">
+        <div className="promo-icon">📚</div>
         <div>
-          <b>
-            Каждая большая идея начинается с маленького шага!
-          </b>
+          <h2>Моя библиотека сказок</h2>
           <p>
-            AI KIDS поможет подготовить материалы для занятий.
+            Все твои авторские истории с иллюстрациями в одном месте.
           </p>
         </div>
+        <Link href="/dashboard/library">Открыть библиотеку →</Link>
+      </section>
 
-        <Link href="/studio">
-          В мастерскую →
-        </Link>
+      <section className="bottom">
+        <span>🌼</span>
+        <div>
+          <b>Каждая большая идея начинается с маленького шага!</b>
+          <p>AI KIDS поможет подготовить материалы для занятий.</p>
+        </div>
+        <Link href="/studio">В мастерскую →</Link>
       </section>
 
       <footer>
@@ -232,9 +237,10 @@ export default async function Dashboard() {
         }
         nav {
           display: flex;
-          gap: 22px;
+          flex-wrap: wrap;
+          gap: 16px;
           color: #647995;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 900;
         }
         nav a:hover { color: #df865f; }
@@ -406,6 +412,26 @@ export default async function Dashboard() {
         .section-head p { margin: 0; color: #77879e; font-size: 13px; }
         .outline { display: inline-flex; align-items: center; min-height: 43px; font-size: 12px; }
         .alert { padding: 15px; border-radius: 14px; background: #fff0e8; color: #a45b43; font-weight: 800; }
+        .library-promo {
+          display: flex;
+          align-items: center;
+          gap: 17px;
+          margin-top: 30px;
+          padding: 22px;
+          border: 2px solid #e5e7fa;
+          border-radius: 21px;
+          background: linear-gradient(110deg,#f0edff,#fff1e8);
+        }
+        .promo-icon { font-size: 42px; }
+        .library-promo h2 { margin: 0 0 5px; font-size: 19px; }
+        .library-promo p { margin: 0; color: #77879e; font-size: 12px; }
+        .library-promo a {
+          margin-left: auto;
+          color: #526fa7;
+          font-size: 12px;
+          font-weight: 1000;
+          white-space: nowrap;
+        }
         .bottom {
           display: flex;
           align-items: center;
@@ -453,6 +479,8 @@ export default async function Dashboard() {
           .stat:last-child { grid-column: auto; }
           .section-head { align-items: flex-start; flex-direction: column; }
           .section-head h2 { font-size: 25px; }
+          .library-promo { align-items: flex-start; flex-wrap: wrap; }
+          .library-promo a { margin-left: 58px; }
           .bottom { align-items: flex-start; flex-wrap: wrap; }
           .bottom > a { margin-left: 50px; }
           footer { flex-direction: column; text-align: center; }
