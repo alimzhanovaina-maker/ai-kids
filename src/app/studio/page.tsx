@@ -18,6 +18,7 @@ const tools = [
   { id: "game", title: "Дидактические игры", note: "Играй и находи решения", emoji: "🧩", color: "peach" },
   { id: "story", title: "Авторские сказки", note: "Придумывай волшебные истории", emoji: "📚", color: "pink" },
   { id: "illustration", title: "Иллюстрации", note: "Плакаты, раскраски и рисунки", emoji: "🎨", color: "blue" },
+  { id: "character", title: "Генератор персонажей", note: "Создавай сказочных героев и животных", emoji: "🦊", color: "rose" },
   { id: "cards", title: "Карточки", note: "Материалы для печати", emoji: "🖍️", color: "mint" },
   { id: "worksheet", title: "Рабочие листы", note: "Внимание, речь и логика", emoji: "✏️", color: "yellow" },
   { id: "lesson", title: "КСП и конспекты", note: "Планы интересных занятий", emoji: "📝", color: "lavender" },
@@ -204,6 +205,11 @@ export default function Studio() {
       return;
     }
 
+    if (toolId === "character") {
+      window.location.assign("/studio/character");
+      return;
+    }
+
     setType(toolId);
   }
 
@@ -219,6 +225,7 @@ export default function Studio() {
           <Link href="/dashboard">Мой кабинет</Link>
           <Link href="/studio/kit">Умный комплект</Link>
           <Link href="/studio/visuals">Наглядность</Link>
+          <Link href="/studio/character">Персонажи</Link>
         </nav>
 
         <Link className="login-link" href="/login">Войти</Link>
