@@ -16,6 +16,7 @@ const types: Record<string, { label: string; icon: string; bg: string }> = {
   story: { label: "Сказки", icon: "📖", bg: "linear-gradient(135deg,#dce8ff,#e9ddff)" },
   game: { label: "Развивающие игры", icon: "🧩", bg: "linear-gradient(135deg,#d8f3e5,#dcecff)" },
   illustration: { label: "Иллюстрации", icon: "🎨", bg: "linear-gradient(135deg,#ffe0e5,#fff0c9)" },
+  character: { label: "Персонажи", icon: "🦊", bg: "linear-gradient(135deg,#ffe0c2,#ffd6e7)" },
   lesson: { label: "Планы занятий", icon: "📝", bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)" },
   worksheet: { label: "Рабочие листы", icon: "📄", bg: "linear-gradient(135deg,#fff0d5,#e8e2ff)" },
   ksp: { label: "КСП", icon: "📚", bg: "linear-gradient(135deg,#dfeaff,#ddf3ed)" },
