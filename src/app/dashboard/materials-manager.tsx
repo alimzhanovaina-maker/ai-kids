@@ -33,6 +33,57 @@ function getType(kind: string | null) {
   };
 }
 
+function MaterialPreview({
+  id,
+  kind,
+  icon,
+}: {
+  id: string;
+  kind: string | null;
+  icon: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const canShowImage = kind === "illustration" || kind === "character";
+
+  if (!canShowImage || failed) {
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "block",
+          fontSize: "66px",
+          lineHeight: 1,
+          filter: "drop-shadow(0 7px 5px #33445a30)",
+          pointerEvents: "none",
+        }}
+      >
+        {icon}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`/api/projects/${id}`}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      style={{
+        position: "absolute",
+        inset: "0",
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+        padding: "12px",
+        boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
 export default function MaterialsManager({
   initialItems,
 }: {
@@ -230,19 +281,11 @@ export default function MaterialsManager({
                     }}
                   />
 
-                  <span
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      display: "block",
-                      fontSize: "66px",
-                      lineHeight: 1,
-                      filter: "drop-shadow(0 7px 5px #33445a30)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {type.icon}
-                  </span>
+                  <MaterialPreview
+                    id={item.id}
+                    kind={item.kind}
+                    icon={type.icon}
+                  />
 
                   <span
                     style={{
