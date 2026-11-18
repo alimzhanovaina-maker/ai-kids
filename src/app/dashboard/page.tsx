@@ -26,22 +26,19 @@ export default async function Dashboard() {
     .eq("id", user.id)
     .maybeSingle();
 
+  // Дневной лимит — 20 генераций на аккаунт.
+  // Дата сравнивается в UTC, как время в Supabase.
   const generationLimit = 20;
-  const now = new Date();
-  const quotaResetAt = profile?.quota_reset_at
-    ? new Date(profile.quota_reset_at)
-    : null;
+  const todayUTC = new Date().toISOString().slice(0, 10);
 
-  const todayStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  );
+  const quotaDate = profile?.quota_reset_at
+    ? String(profile.quota_reset_at).slice(0, 10)
+    : "";
 
-  const quotaIsCurrent =
-    quotaResetAt !== null && quotaResetAt >= todayStart;
-
-  const generationsUsed = quotaIsCurrent
-    ? Math.max(0, profile?.monthly_generations ?? 0)
-    : 0;
+  const generationsUsed =
+    quotaDate === todayUTC
+      ? Math.max(0, Number(profile?.monthly_generations ?? 0))
+      : 0;
 
   const generationsLeft = Math.max(
     0,
