@@ -15,18 +15,22 @@ const labels: Record<string, string> = {
 };
 
 const tools = [
-  { id: "game", title: "Дидактические игры", note: "Играй и находи решения", emoji: "🧩", color: "peach" },
-  { id: "story", title: "Авторские сказки", note: "Придумывай волшебные истории", emoji: "📚", color: "pink" },
-  { id: "illustration", title: "Иллюстрации", note: "Плакаты, раскраски и рисунки", emoji: "🎨", color: "blue" },
-  { id: "character", title: "Генератор персонажей", note: "Создавай сказочных героев и животных", emoji: "🦊", color: "rose" },
-  { id: "cards", title: "Карточки", note: "Материалы для печати", emoji: "🖍️", color: "mint" },
-  { id: "worksheet", title: "Рабочие листы", note: "Внимание, речь и логика", emoji: "✏️", color: "yellow" },
-  { id: "lesson", title: "КСП и конспекты", note: "Планы интересных занятий", emoji: "📝", color: "lavender" },
-  { id: "author", title: "Авторские разработки", note: "Твои собственные методики", emoji: "🌟", color: "rose" },
+  { id: "game", title: "Дидактические игры", note: "Играй и находи решения", emoji: "🧩" },
+  { id: "story", title: "Авторские сказки", note: "Придумывай волшебные истории", emoji: "📚" },
+  { id: "illustration", title: "Иллюстрации", note: "Плакаты, раскраски и рисунки", emoji: "🎨" },
+  { id: "character", title: "Генератор персонажей", note: "Создавай сказочных героев", emoji: "🦊" },
+  { id: "cards", title: "Карточки", note: "Материалы для печати", emoji: "🖍️" },
+  { id: "worksheet", title: "Рабочие листы", note: "Внимание, речь и логика", emoji: "✏️" },
+  { id: "lesson", title: "КСП и конспекты", note: "Планы интересных занятий", emoji: "📝" },
+  { id: "author", title: "Авторские разработки", note: "Твои собственные методики", emoji: "🌟" },
 ];
 
 function escapeHTML(text: string) {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function markdownToHtml(text: string) {
@@ -37,33 +41,45 @@ function markdownToHtml(text: string) {
   for (const raw of lines) {
     const line = raw.trim();
 
-    if (/^---+$/.test(line)) {
-      if (inList) { html += "</ul>"; inList = false; }
-      html += "<hr />";
-      continue;
-    }
-
     if (!line) {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
       continue;
     }
 
     const value = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
     if (line.startsWith("### ")) {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
       html += `<h3>${value.slice(4)}</h3>`;
     } else if (line.startsWith("## ")) {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
       html += `<h2>${value.slice(3)}</h2>`;
     } else if (line.startsWith("# ")) {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
       html += `<h1>${value.slice(2)}</h1>`;
     } else if (/^[-•]\s/.test(line)) {
-      if (!inList) { html += "<ul>"; inList = true; }
+      if (!inList) {
+        html += "<ul>";
+        inList = true;
+      }
       html += `<li>${value.replace(/^[-•]\s/, "")}</li>`;
     } else {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
       html += `<p>${value}</p>`;
     }
   }
@@ -72,11 +88,49 @@ function markdownToHtml(text: string) {
   return html;
 }
 
-function documentHtml(content: string, title: string) {
-  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${escapeHTML(title)}</title><style>
-  @page{size:A4;margin:18mm}body{font:16px/1.7 Arial,sans-serif;color:#30496b;max-width:850px;margin:30px auto;padding:24px}
-  h1,h2{color:#315b96}h2{border-bottom:2px solid #e3eafa;padding-bottom:8px;margin-top:26px}li{margin-bottom:7px}
-  </style></head><body>${markdownToHtml(content)}</body></html>`;
+function documentHtml(content: string, title: string, illustration: string | null) {
+  const image = illustration
+    ? `<img class="worksheet-image" src="${escapeHTML(illustration)}" alt="Иллюстрация к рабочему листу" />`
+    : "";
+
+  return `<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>${escapeHTML(title)}</title>
+<style>
+@page { size: A4 portrait; margin: 12mm; }
+* { box-sizing: border-box; }
+body {
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #30496b;
+  margin: 0;
+}
+h1 { color: #315b96; font-size: 23px; text-align: center; }
+h2 { color: #315b96; font-size: 17px; margin-top: 17px; }
+h3 { color: #426ca6; font-size: 15px; }
+p { margin: 7px 0; }
+li { margin-bottom: 5px; }
+.worksheet-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: 250px;
+  object-fit: contain;
+  margin: 12px auto;
+}
+@media print {
+  body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+${image}
+${markdownToHtml(content)}
+</body>
+</html>`;
 }
 
 export default function Studio() {
@@ -86,6 +140,7 @@ export default function Studio() {
   const [language, setLanguage] = useState("both");
   const [format, setFormat] = useState("Цветной, для детей");
   const [result, setResult] = useState("");
+  const [illustration, setIllustration] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -104,6 +159,7 @@ export default function Studio() {
     setBusy(true);
     setError("");
     setResult("");
+    setIllustration(null);
 
     try {
       const response = await fetch("/api/generate", {
@@ -114,9 +170,12 @@ export default function Studio() {
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.error || "Не удалось создать материал");
+      if (!response.ok) {
+        throw new Error(data.error || "Не удалось создать материал");
+      }
 
-      setResult(data.content);
+      setResult(data.content || "");
+      setIllustration(data.illustration || null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Произошла ошибка");
     } finally {
@@ -153,17 +212,15 @@ export default function Studio() {
 
   function downloadWord() {
     const blob = new Blob(
-      ["\ufeff", documentHtml(result, labels[type] + ": " + topic)],
+      ["\ufeff", documentHtml(result, labels[type] + ": " + topic, illustration)],
       { type: "application/msword;charset=utf-8" }
     );
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-
     a.href = url;
     a.download = "AI-KIDS-" + type + ".doc";
     a.click();
-
     URL.revokeObjectURL(url);
   }
 
@@ -176,7 +233,9 @@ export default function Studio() {
     }
 
     win.document.open();
-    win.document.write(documentHtml(result, labels[type] + ": " + topic));
+    win.document.write(
+      documentHtml(result, labels[type] + ": " + topic, illustration)
+    );
     win.document.close();
 
     win.onload = () => {
@@ -199,27 +258,24 @@ export default function Studio() {
       window.location.assign("/studio/storybook");
       return;
     }
-
     if (toolId === "illustration") {
       window.location.assign("/studio/illustration");
       return;
     }
-
     if (toolId === "character") {
       window.location.assign("/studio/character");
       return;
     }
-
     setType(toolId);
+    setResult("");
+    setIllustration(null);
+    setError("");
   }
 
   return (
-    <main className="studio-world">
-      <header className="studio-topbar">
-        <Link className="studio-brand" href="/">
-          <span className="brand-mark">✦</span> AI KIDS <span>🌈</span>
-        </Link>
-
+    <main className="studio">
+      <header className="topbar">
+        <Link className="brand" href="/">✦ AI KIDS 🌈</Link>
         <nav>
           <Link href="/">Главная</Link>
           <Link href="/dashboard">Мой кабинет</Link>
@@ -227,162 +283,128 @@ export default function Studio() {
           <Link href="/studio/visuals">Наглядность</Link>
           <Link href="/studio/character">Персонажи</Link>
         </nav>
-
-        <Link className="login-link" href="/login">Войти</Link>
+        <Link className="login" href="/login">Войти</Link>
       </header>
 
-      <section className="studio-hero">
-        <div className="hero-copy">
+      <section className="hero">
+        <div>
           <span className="hero-label">✨ ТВОЯ ТВОРЧЕСКАЯ КОМНАТА</span>
           <h1>Добро пожаловать в мастерскую!</h1>
-          <p>Выбирай волшебный инструмент, придумывай тему — и создавай материалы для маленьких исследователей.</p>
-          <div className="hero-tags">
+          <p>
+            Выбирай волшебный инструмент, придумывай тему и создавай
+            материалы для маленьких исследователей.
+          </p>
+          <div className="tags">
             <span>🧸 Для детей 3–6 лет</span>
             <span>🌷 Қазақша + Русский</span>
           </div>
         </div>
-
-        <div className="hero-pictures" aria-hidden="true">
-          <span className="rainbow">🌈</span>
-          <span className="fox">🦊</span>
-          <span className="bear">🐻</span>
-          <span className="book">📖</span>
-          <span className="sun">☀️</span>
-          <span className="cloud">☁️</span>
-        </div>
+        <div className="hero-art">🌈 🦊 🐻 📖 ☀️</div>
       </section>
 
-      <section className="tools-section">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">ВЫБИРАЙ И ТВОРИ</span>
-            <h2>Что будем создавать?</h2>
-            <p>Каждый инструмент — маленькое творческое приключение.</p>
-          </div>
-          <span className="heading-mascot">🐰</span>
-        </div>
-
-        <div className="tools-grid">
+      <section className="section">
+        <span className="eyebrow">ВЫБИРАЙ И ТВОРИ</span>
+        <h2>Что будем создавать?</h2>
+        <div className="tools">
           {tools.map((tool) => (
             <button
               type="button"
               key={tool.id}
               onClick={() => openTool(tool.id)}
-              className={`tool-card ${tool.color} ${type === tool.id ? "active" : ""}`}
+              className={`tool ${type === tool.id ? "active" : ""}`}
             >
-              <span className="tool-art">{tool.emoji}</span>
+              <span>{tool.emoji}</span>
               <b>{tool.title}</b>
               <small>{tool.note}</small>
-              <i>
-                {type === tool.id ? "✓ Выбрано" : "Выбрать →"}
-              </i>
+              <i>{type === tool.id ? "✓ Выбрано" : "Выбрать →"}</i>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="builder-section">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">МАСТЕРСКАЯ AI KIDS</span>
-            <h2>Создадим что-нибудь чудесное?</h2>
-            <p>Заполни несколько полей — AI KIDS подготовит основу материала.</p>
-          </div>
-          <span className="heading-mascot">🧚</span>
-        </div>
+      <section className="section">
+        <span className="eyebrow">МАСТЕРСКАЯ AI KIDS</span>
+        <h2>Создадим что-нибудь чудесное?</h2>
 
-        <div className="builder-card">
-          <div className="builder-title">
-            <span>🪄</span>
-            <div>
-              <b>Настрой своё задание</b>
-              <small>Все параметры можно изменить перед генерацией.</small>
-            </div>
-          </div>
+        <div className="builder">
+          <h3>🪄 Настрой своё задание</h3>
 
-          <div className="form-grid">
-            <div className="field">
-              <label>Что создаём?</label>
-              <select
-                value={type}
-                onChange={(e) => openTool(e.target.value)}
-              >
+          <div className="fields">
+            <label>
+              Что создаём?
+              <select value={type} onChange={(e) => openTool(e.target.value)}>
                 {Object.entries(labels).map(([key, value]) => (
                   <option key={key} value={key}>{value}</option>
                 ))}
               </select>
-            </div>
+            </label>
 
-            <div className="field">
-              <label>Возраст детей</label>
+            <label>
+              Возраст детей
               <select value={age} onChange={(e) => setAge(e.target.value)}>
                 <option>3 года</option>
                 <option>4 года</option>
                 <option>5 лет</option>
                 <option>6 лет</option>
               </select>
-            </div>
+            </label>
 
-            <div className="field field-wide">
-              <label>Тема занятия</label>
+            <label className="wide">
+              Тема занятия
               <input
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Например: Волшебный мир животных"
               />
-            </div>
+            </label>
 
-            <div className="field">
-              <label>Язык материала</label>
+            <label>
+              Язык материала
               <select value={language} onChange={(e) => setLanguage(e.target.value)}>
                 <option value="both">Русский + қазақша</option>
                 <option value="ru">Русский</option>
                 <option value="kz">Қазақша</option>
               </select>
-            </div>
+            </label>
 
-            <div className="field">
-              <label>Оформление</label>
+            <label>
+              Оформление
               <select value={format} onChange={(e) => setFormat(e.target.value)}>
                 <option>Цветной, для детей</option>
                 <option>Чёрно-белый, для печати</option>
                 <option>Пастельный</option>
               </select>
-            </div>
+            </label>
           </div>
 
           <button
-            className="create-button"
+            className="create"
             onClick={generate}
             disabled={busy || !topic.trim()}
           >
-            {busy ? "✨ Создаём волшебство..." : "✨ Создать материал　→"}
+            {busy ? "✨ Создаём материал..." : "✨ Создать материал →"}
           </button>
 
-          {busy && (
-            <div className="notice">
-              🦋 Помощник готовит твой материал. Это может занять немного времени...
-            </div>
-          )}
-
-          {error && <div className="notice">{error}</div>}
+          {busy && <p className="notice">🦋 Помощник готовит твой материал...</p>}
+          {error && <p className="notice">{error}</p>}
 
           {result && (
-            <section className="result-section">
-              <div className="builder-title">
-                <span>📚</span>
-                <div>
-                  <b>Твой готовый материал!</b>
-                  <small>Проверь результат, сохрани или скачай его.</small>
+            <section className="result">
+              <h3>📚 Твой готовый материал!</h3>
+
+              {illustration && (
+                <div className="illustration">
+                  <p><b>🎨 3D-иллюстрация для рабочего листа</b></p>
+                  <img src={illustration} alt="Иллюстрация к рабочему листу" />
                 </div>
-              </div>
+              )}
 
               <div
                 className="result-content"
                 dangerouslySetInnerHTML={{ __html: markdownToHtml(result) }}
               />
 
-              <div className="result-actions">
+              <div className="actions">
                 <button onClick={downloadWord}>📄 Скачать Word</button>
                 <button onClick={downloadPDF}>🖨️ Печать / PDF</button>
                 <button onClick={save}>💾 Сохранить</button>
@@ -393,99 +415,58 @@ export default function Studio() {
         </div>
       </section>
 
-      <section className="quick-links">
-        <Link href="/studio/kit">
-          <span>🧺</span>
-          <b>Умный комплект</b>
-          <small>Создай сразу несколько материалов</small>
-          <i>Открыть →</i>
-        </Link>
-
-        <Link href="/studio/visuals">
-          <span>🎨</span>
-          <b>Наглядная мастерская</b>
-          <small>Создавай красочные изображения</small>
-          <i>Открыть →</i>
-        </Link>
+      <section className="quick">
+        <Link href="/studio/kit">🧺 <b>Умный комплект</b><small>Создай сразу несколько материалов</small></Link>
+        <Link href="/studio/visuals">🎨 <b>Наглядная мастерская</b><small>Создавай красочные изображения</small></Link>
       </section>
 
-      <footer className="studio-footer">
-        <span>🌼 AI KIDS · Большие идеи для маленьких открытий</span>
-        <Link href="/">Вернуться на главную</Link>
-      </footer>
+      <footer>🌼 AI KIDS · Большие идеи для маленьких открытий</footer>
 
       <style jsx>{`
-        .studio-world{max-width:1180px;margin:0 auto;padding:20px 28px 42px;color:#294363;font-family:Nunito,system-ui,sans-serif}
-        .studio-topbar{min-height:65px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-        .studio-brand{display:flex;align-items:center;gap:9px;font-size:23px;font-weight:1000;text-decoration:none;color:#294363}
-        .brand-mark{width:40px;height:40px;display:grid;place-items:center;background:#ffdc75;border-radius:14px;box-shadow:0 4px 0 #ebc25a}
-        .studio-topbar nav{display:flex;gap:20px;color:#647995;font-size:13px;font-weight:900}
-        .studio-topbar nav a,.login-link{color:#647995;text-decoration:none}
-        .login-link{background:#fff;border:2px solid #e7edf5;border-radius:13px;padding:10px 16px;font-weight:1000}
-        .studio-hero{position:relative;overflow:hidden;margin-top:18px;padding:40px 45px;min-height:270px;border-radius:31px;background:linear-gradient(115deg,#527bc0,#8995d3);color:#fff;box-shadow:0 9px 0 #e9e4dc}
-        .studio-hero:after{content:"";position:absolute;width:350px;height:350px;border-radius:50%;background:#ffffff13;right:70px;top:-190px}
-        .hero-copy{position:relative;z-index:2;max-width:660px}
-        .hero-label{display:inline-block;padding:8px 13px;background:#ffffff2c;border-radius:30px;font-size:11px;font-weight:1000;letter-spacing:.7px}
-        .studio-hero h1{font-size:clamp(35px,4.4vw,52px);line-height:1.08;margin:16px 0 10px;font-weight:1000;letter-spacing:-1.4px}
-        .studio-hero p{font-size:16px;line-height:1.6;max-width:590px;color:#f0f4ff;font-weight:700}
-        .hero-tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:19px}
-        .hero-tags span{padding:8px 12px;background:#ffffff24;border-radius:20px;font-size:12px;font-weight:900}
-        .hero-pictures span{position:absolute;z-index:1;filter:drop-shadow(0 8px 5px #304b762b)}
-        .rainbow{right:90px;top:22px;font-size:100px;transform:rotate(9deg)}
-        .fox{right:35px;bottom:20px;font-size:86px}
-        .bear{right:260px;bottom:20px;font-size:73px}
-        .book{right:155px;top:115px;font-size:75px}
-        .sun{right:300px;top:30px;font-size:43px}
-        .cloud{right:25px;top:25px;font-size:45px}
-        .tools-section,.builder-section{padding:45px 0 12px}
-        .section-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px}
-        .eyebrow{color:#df9564;font-size:11px;font-weight:1000;letter-spacing:1.3px}
-        .section-heading h2{font-size:29px;margin:5px 0;color:#294363;font-weight:1000}
-        .section-heading p{margin:0;color:#77879e;font-size:14px}
-        .heading-mascot{font-size:53px}
-        .tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
-        .tool-card{min-height:172px;text-align:left;border:2px solid transparent;border-radius:22px;padding:16px;display:flex;flex-direction:column;align-items:flex-start;cursor:pointer;box-shadow:0 5px 0 #e9e5de;transition:transform .18s,box-shadow .18s}
-        .tool-card:hover{transform:translateY(-4px) rotate(-.4deg);box-shadow:0 9px 0 #e9e5de}
-        .tool-card.active{border-color:#527bc0;box-shadow:0 5px 0 #527bc055}
-        .peach{background:#ffebce}.pink{background:#fbe1ef}.blue{background:#e0ebff}.mint{background:#def3e5}.yellow{background:#fff2c9}.lavender{background:#eee6ff}.rose{background:#ffe4e8}
-        .tool-art{font-size:43px;line-height:1.2;margin-bottom:9px;filter:drop-shadow(0 4px 2px #34445a18)}
-        .tool-card b{font-size:14px;font-weight:1000;color:#294363}
-        .tool-card small{font-size:11px;color:#71819a;margin-top:4px;line-height:1.4}
-        .tool-card i{font-size:11px;font-style:normal;font-weight:1000;color:#5479b6;margin-top:auto;padding-top:10px}
-        .builder-card{background:#fff;border:2px solid #eeeaf0;border-radius:27px;padding:27px;box-shadow:0 7px 0 #e9e5de}
-        .builder-title{display:flex;align-items:center;gap:13px;margin-bottom:22px}
-        .builder-title>span{font-size:35px}
-        .builder-title b{display:block;font-size:20px;font-weight:1000}
-        .builder-title small{display:block;margin-top:3px;color:#8290a4;font-size:12px}
-        .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-        .field{display:flex;flex-direction:column;gap:7px}
-        .field-wide{grid-column:1/-1}
-        .field label{font-size:13px;font-weight:1000;color:#526b8c}
-        .field input,.field select{width:100%;min-height:49px;padding:0 14px;border:2px solid #e8edf5;border-radius:14px;background:#fffdf9;color:#30496b;outline:none;font-size:14px}
-        .field input:focus,.field select:focus{border-color:#89a6d8;box-shadow:0 0 0 3px #89a6d822}
-        .create-button{margin-top:22px;width:100%;min-height:56px;border:0;border-radius:16px;background:#ffdc75;color:#35527b;font-size:16px;font-weight:1000;box-shadow:0 5px 0 #e8bd52;cursor:pointer}
-        .create-button:disabled{opacity:.65;cursor:wait}
-        .notice{margin-top:15px;padding:13px 16px;border-radius:14px;background:#fff5d9;color:#8a7041;font-weight:800;font-size:13px}
-        .result-section{margin-top:28px;padding-top:24px;border-top:2px dashed #e9dfce}
-        .result-content{background:#fffdf9;border:2px solid #f0e8dc;border-radius:18px;padding:23px;line-height:1.8;color:#30496b;overflow-wrap:anywhere}
+        .studio{max-width:1180px;margin:auto;padding:20px 28px 42px;color:#294363;font-family:Arial,sans-serif}
+        .topbar{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;min-height:65px}
+        .brand{font-size:23px;font-weight:900;color:#294363;text-decoration:none}
+        nav{display:flex;gap:16px;flex-wrap:wrap}
+        nav a,.login{color:#647995;text-decoration:none;font-size:13px;font-weight:800}
+        .login{border:2px solid #e7edf5;padding:10px 15px;border-radius:13px}
+        .hero{margin-top:18px;padding:40px;border-radius:30px;background:linear-gradient(115deg,#527bc0,#8995d3);color:white;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:260px}
+        .hero-label,.tags span{background:#ffffff30;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800}
+        .hero h1{font-size:clamp(32px,4vw,48px);margin:18px 0 10px}
+        .hero p{max-width:590px;line-height:1.6}
+        .tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+        .hero-art{font-size:55px;max-width:280px;line-height:1.7}
+        .section{padding:42px 0 10px}
+        .eyebrow{color:#df9564;font-size:11px;font-weight:900;letter-spacing:1px}
+        h2{font-size:28px;margin:8px 0 20px}
+        .tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+        .tool{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;min-height:155px;padding:16px;border:2px solid transparent;border-radius:20px;background:#ffebce;cursor:pointer;color:#294363;box-shadow:0 5px 0 #e9e5de}
+        .tool:nth-child(2){background:#fbe1ef}.tool:nth-child(3){background:#e0ebff}.tool:nth-child(4){background:#ffe4e8}.tool:nth-child(5){background:#def3e5}.tool:nth-child(6){background:#fff2c9}.tool:nth-child(7){background:#eee6ff}.tool:nth-child(8){background:#ffe4e8}
+        .tool.active{border-color:#527bc0}
+        .tool span{font-size:38px}.tool b{font-size:14px}.tool small{color:#71819a}.tool i{margin-top:auto;color:#5279b7;font-size:11px;font-style:normal;font-weight:900}
+        .builder{background:white;border:2px solid #eeeaf0;border-radius:25px;padding:25px;box-shadow:0 6px 0 #e9e5de}
+        .builder h3{font-size:20px;margin:0 0 20px}
+        .fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .fields label{display:flex;flex-direction:column;gap:7px;font-weight:800;font-size:13px;color:#526b8c}
+        .fields input,.fields select{width:100%;min-height:48px;padding:10px 13px;border:2px solid #e8edf5;border-radius:13px;background:#fffdf9;color:#30496b;font-size:14px}
+        .wide{grid-column:1/-1}
+        .create{width:100%;margin-top:22px;min-height:55px;border:0;border-radius:15px;background:#ffdc75;color:#35527b;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 5px 0 #e8bd52}
+        .create:disabled{opacity:.6;cursor:wait}
+        .notice{padding:13px;background:#fff5d9;border-radius:13px;color:#8a7041;font-weight:800}
+        .result{margin-top:25px;padding-top:22px;border-top:2px dashed #e9dfce}
+        .result-content{background:#fffdf9;border:2px solid #f0e8dc;border-radius:17px;padding:22px;line-height:1.8;overflow-wrap:anywhere}
         .result-content :global(h1),.result-content :global(h2){color:#315b96}
-        .result-content :global(h2){border-bottom:2px solid #e7edf6;padding-bottom:8px;margin-top:24px}
-        .result-content :global(h3){color:#426ca6}
-        .result-content :global(li){margin-bottom:7px}
-        .result-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px}
-        .result-actions button{border:2px solid #e7edf5;border-radius:13px;padding:11px 14px;background:#fff;color:#426ba8;font-weight:900;cursor:pointer}
-        .result-actions button:hover{background:#fff5d9}
-        .quick-links{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:28px 0}
-        .quick-links a{display:grid;grid-template-columns:52px 1fr;column-gap:12px;align-items:center;padding:17px;background:#e6f4e9;border:2px solid #d8eadc;border-radius:20px;text-decoration:none;color:#294363}
-        .quick-links a:nth-child(2){background:#e7edff;border-color:#d9e2fb}
-        .quick-links a>span{grid-row:span 3;font-size:39px}
-        .quick-links b{font-size:14px}
-        .quick-links small{color:#71819a;font-size:11px}
-        .quick-links i{font-size:11px;font-style:normal;font-weight:1000;color:#5279b7;margin-top:5px}
-        .studio-footer{display:flex;justify-content:space-between;gap:15px;padding:22px 0;border-top:2px dashed #eadfcb;color:#8390a4;font-size:12px;font-weight:800}
-        .studio-footer a{color:#5279b7;text-decoration:none}
-        @media(max-width:850px){.tools-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-pictures .bear{right:190px}.hero-pictures .rainbow{right:25px;opacity:.8}.hero-pictures .fox{right:15px;opacity:.8}.studio-hero{padding:34px}.hero-copy{max-width:76%}}
-        @media(max-width:600px){.studio-world{padding:12px 15px 30px}.studio-topbar{height:auto;min-height:55px;flex-wrap:wrap}.studio-topbar nav{order:3;width:100%;overflow:auto;gap:14px;font-size:11px;padding:8px 0}.studio-hero{margin-top:14px;padding:24px 20px;min-height:330px}.studio-hero h1{font-size:35px}.studio-hero p{font-size:14px}.hero-copy{max-width:100%}.hero-pictures .rainbow{font-size:60px;right:8px;top:auto;bottom:5px;opacity:.55}.hero-pictures .fox{font-size:53px;right:15px;bottom:5px;opacity:.55}.hero-pictures .bear{font-size:48px;right:120px;bottom:5px;opacity:.55}.hero-pictures .book{right:100px;top:auto;bottom:65px;font-size:48px}.hero-pictures .sun{right:220px;top:20px}.tools-section,.builder-section{padding-top:34px}.section-heading h2{font-size:24px}.heading-mascot{font-size:39px}.tools-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool-card{min-height:155px;padding:12px}.tool-card b{font-size:12px}.tool-card small{font-size:10px}.tool-art{font-size:35px}.builder-card{padding:17px}.form-grid{grid-template-columns:1fr}.field-wide{grid-column:auto}.quick-links{grid-template-columns:1fr}.studio-footer{flex-direction:column;text-align:center}}
+        .result-content :global(h2){border-bottom:2px solid #e7edf6;padding-bottom:8px}
+        .illustration{margin:15px 0;padding:15px;background:#f5f8ff;border-radius:16px}
+        .illustration img{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:12px}
+        .actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px}
+        .actions button{border:2px solid #e7edf5;border-radius:12px;padding:11px 14px;background:white;color:#426ba8;font-weight:900;cursor:pointer}
+        .quick{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:28px 0}
+        .quick a{display:flex;flex-direction:column;gap:8px;padding:18px;border-radius:18px;background:#e6f4e9;color:#294363;text-decoration:none}
+        .quick a:nth-child(2){background:#e7edff}
+        .quick small{color:#71819a}
+        footer{padding:22px 0;border-top:2px dashed #eadfcb;color:#8390a4;text-align:center;font-size:12px}
+        @media(max-width:850px){.tools{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-art{font-size:40px}}
+        @media(max-width:600px){.studio{padding:12px 15px 30px}.hero{padding:24px;min-height:300px;flex-direction:column;align-items:flex-start}.hero h1{font-size:34px}.hero-art{font-size:35px}.fields{grid-template-columns:1fr}.wide{grid-column:auto}.builder{padding:16px}.quick{grid-template-columns:1fr}nav{font-size:11px}}
       `}</style>
     </main>
   );
