@@ -17,7 +17,6 @@ const prompts: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
-    // 1. Проверяем настройки OpenAI
     const apiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
@@ -27,10 +26,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Проверяем пользователя
     const supabase = await createClient();
-    const { data: { user }, error: authError } =
-      await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(
@@ -39,7 +39,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Получаем параметры
     const body = await req.json();
 
     const {
@@ -68,7 +67,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Проверяем лимит
     const { data: quotaData, error: quotaError } =
       await supabase.rpc("consume_generation");
 
@@ -76,7 +74,7 @@ export async function POST(req: Request) {
       console.error("QUOTA ERROR:", quotaError);
 
       return NextResponse.json(
-        { error: "Ошибка проверки лимита генераций. Проверь Supabase." },
+        { error: "Ошибка проверки дневного лимита генераций. Проверь Supabase." },
         { status: 500 }
       );
     }
@@ -88,13 +86,12 @@ export async function POST(req: Request) {
     if (!quota?.allowed) {
       return NextResponse.json(
         {
-          error: "Лимит бесплатного тарифа исчерпан. Попробуй позже или перейди на PRO."
+          error: "Ты использовала все 20 генераций на сегодня. Завтра лимит обновится, и ты снова сможешь создавать материалы бесплатно."
         },
         { status: 429 }
       );
     }
 
-    // 5. Настраиваем язык
     let languageRule = "";
 
     if (language === "ru") {
@@ -106,10 +103,7 @@ export async function POST(req: Request) {
         "Сначала создай полноценную версию на русском языке, затем отдельную полноценную версию на грамотном казахском языке. Не смешивай языки.";
     }
 
-    // 6. Подключаем OpenAI
-    const openai = new OpenAI({
-      apiKey
-    });
+    const openai = new OpenAI({ apiKey });
 
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
@@ -156,7 +150,6 @@ ${languageRule}
       temperature: 0.8
     });
 
-    // 7. Получаем результат
     const content =
       response.choices[0]?.message?.content;
 
