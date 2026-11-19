@@ -8,7 +8,7 @@ type AnyObject = Record<string, any>;
 
 function safeList(items: any) {
   return Array.isArray(items)
-    ? items.filter((x) => x !== null && x !== undefined && String(x).trim() !== "")
+    ? items.filter((x) => x !== null && x !== undefined)
     : [];
 }
 
@@ -56,6 +56,32 @@ export default async function SavedMaterialPage({ params }: Props) {
     kit = null;
   }
 
+  // Распознаём сохранённую авторскую сказку
+  const isStorybook =
+    kit?.version === "storybook-v1" &&
+    kit?.story &&
+    Array.isArray(kit?.images);
+
+  // Получаем безопасные ссылки на обложку и иллюстрации сказки
+  const storybookImages = isStorybook
+    ? await Promise.all(
+        kit.images.map(async (entry: AnyObject) => {
+          const storagePath =
+            typeof entry?.path === "string" ? entry.path : "";
+
+          if (!storagePath || !storagePath.startsWith(user.id + "/")) {
+            return "";
+          }
+
+          const { data } = await supabase.storage
+            .from("storybooks")
+            .createSignedUrl(storagePath, 60 * 60 * 24 * 7);
+
+          return data?.signedUrl || "";
+        })
+      )
+    : [];
+
   const isImage =
     typeof material.content === "string" &&
     material.content.startsWith("data:image/");
@@ -81,9 +107,11 @@ export default async function SavedMaterialPage({ params }: Props) {
         <Link href="/dashboard" className="back-link">
           ← Мой кабинет
         </Link>
+
         <Link href="/" className="saved-brand">
           ✦ AI KIDS
         </Link>
+
         <Link href="/studio" className="new-link">
           ＋ Создать материал
         </Link>
@@ -104,7 +132,8 @@ export default async function SavedMaterialPage({ params }: Props) {
           {kit?.age && <span>Возраст: {kit.age}</span>}
 
           <span>
-            Создано: {new Date(material.created_at).toLocaleDateString("ru-RU")}
+            Создано:{" "}
+            {new Date(material.created_at).toLocaleDateString("ru-RU")}
           </span>
 
           <span>
@@ -117,7 +146,78 @@ export default async function SavedMaterialPage({ params }: Props) {
           </span>
         </div>
 
-        {isImage ? (
+        {/* АВТОРСКАЯ СКАЗКА */}
+        {isStorybook ? (
+          <div className="storybook">
+            <div className="storybook-cover">
+              {storybookImages[0] ? (
+                <img
+                  src={storybookImages[0]}
+                  alt={kit.story.titleRu || material.title}
+                />
+              ) : (
+                <div className="storybook-placeholder">📖</div>
+              )}
+
+              <div className="storybook-cover-info">
+                <span className="storybook-label">
+                  ✨ АВТОРСКАЯ СКАЗКА
+                </span>
+
+                <h2>{kit.story.titleRu || material.title}</h2>
+
+                {kit.story.titleKz && (
+                  <h3>{kit.story.titleKz}</h3>
+                )}
+
+                <p>
+                  {safeList(kit.story.pages).length} страниц
+                  {" · "}Иллюстрированная книга
+                </p>
+              </div>
+            </div>
+
+            <div className="storybook-pages">
+              {safeList(kit.story.pages).map(
+                (page: AnyObject, i: number) => (
+                  <article className="storybook-page" key={i}>
+                    <div className="storybook-image">
+                      {storybookImages[i + 1] ? (
+                        <img
+                          src={storybookImages[i + 1]}
+                          alt={`Иллюстрация к странице ${i + 1}`}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span>🦊</span>
+                      )}
+                    </div>
+
+                    <div className="storybook-text">
+                      <span className="page-number">
+                        СТРАНИЦА {i + 1}
+                      </span>
+
+                      {page.textRu && (
+                        <div>
+                          <h3>Русский язык</h3>
+                          <p>{page.textRu}</p>
+                        </div>
+                      )}
+
+                      {page.textKz && (
+                        <div className="kazakh-text">
+                          <h3>Қазақша</h3>
+                          <p>{page.textKz}</p>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                )
+              )}
+            </div>
+          </div>
+        ) : isImage ? (
           <div className="single-image">
             <img
               src={imageUrl}
@@ -146,7 +246,7 @@ export default async function SavedMaterialPage({ params }: Props) {
               </section>
             )}
 
-            {hasContent(kit.teacherIntroduction) && (
+            {kit.teacherIntroduction && (
               <section className="content-section">
                 <h2>👩‍🏫 Вступление педагога</h2>
                 <p>{kit.teacherIntroduction}</p>
@@ -166,20 +266,23 @@ export default async function SavedMaterialPage({ params }: Props) {
                             className="card-image"
                             src={illustrations[i]}
                             alt={card.title || `Карточка ${i + 1}`}
-                            loading="lazy"
-                            decoding="async"
                           />
                         )}
 
                       <h3>
-                        {card.number || i + 1}. {card.title || "Карточка"}
+                        {card.number || i + 1}.{" "}
+                        {card.title || "Карточка"}
                       </h3>
 
                       {card.titleKz && (
-                        <p className="secondary-language">{card.titleKz}</p>
+                        <p className="secondary-language">
+                          {card.titleKz}
+                        </p>
                       )}
 
-                      {card.learningFact && <p>{card.learningFact}</p>}
+                      {card.learningFact && (
+                        <p>{card.learningFact}</p>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -253,15 +356,17 @@ export default async function SavedMaterialPage({ params }: Props) {
             )}
 
             {kit.poster && (
-              <section className="content-section poster-section">
+              <section className="content-section">
                 <h2>🖼️ Плакат: {kit.poster.title}</h2>
 
-                {safeList(kit.poster.sections).map((x: AnyObject, i: number) => (
-                  <p key={i}>
-                    <b>{x.heading}</b>
-                    {x.description ? ` — ${x.description}` : ""}
-                  </p>
-                ))}
+                {safeList(kit.poster.sections).map(
+                  (x: AnyObject, i: number) => (
+                    <p key={i}>
+                      <b>{x.heading}</b>
+                      {x.description ? ` — ${x.description}` : ""}
+                    </p>
+                  )
+                )}
               </section>
             )}
 
@@ -277,9 +382,9 @@ export default async function SavedMaterialPage({ params }: Props) {
             {kit.puzzle && (
               <section className="content-section">
                 <h2>🧩 Пазлы: {kit.puzzle.title}</h2>
-
-                {kit.puzzle.instruction && <p>{kit.puzzle.instruction}</p>}
-
+                {kit.puzzle.instruction && (
+                  <p>{kit.puzzle.instruction}</p>
+                )}
                 {safeList(kit.puzzle.pieces).length > 0 && (
                   <ul>
                     {safeList(kit.puzzle.pieces).map((x: any, i: number) => (
@@ -338,7 +443,6 @@ export default async function SavedMaterialPage({ params }: Props) {
             {vocabulary.length > 0 && (
               <section className="content-section">
                 <h2>🌍 Словарь</h2>
-
                 <div className="vocabulary">
                   {vocabulary.map((word: AnyObject, i: number) => (
                     <p key={i}>
@@ -386,7 +490,8 @@ export default async function SavedMaterialPage({ params }: Props) {
         </div>
 
         <p className="print-tip">
-          Для печати или сохранения в PDF нажми Ctrl + P и выбери «Сохранить как PDF».
+          Для печати или сохранения в PDF нажми Ctrl + P и выбери
+          «Сохранить как PDF».
         </p>
       </section>
 
@@ -419,18 +524,30 @@ export default async function SavedMaterialPage({ params }: Props) {
         .single-image{display:flex;justify-content:center;padding:18px;border-radius:18px;background:#f2f5fa}
         .single-image img{display:block;max-width:100%;height:auto;max-height:1100px;object-fit:contain;background:white}
         .text-material{white-space:pre-wrap;padding:24px;border-radius:16px;background:#fffdf8;color:#334b6b;font-size:15px;line-height:1.75}
+        .storybook{margin-top:24px}
+        .storybook-cover{display:grid;grid-template-columns:minmax(220px,.9fr) 1.1fr;gap:25px;align-items:center;padding:22px;border-radius:22px;background:linear-gradient(135deg,#fff3d9,#f4eaff)}
+        .storybook-cover img{width:100%;max-height:390px;object-fit:contain;border-radius:16px;background:#fff}
+        .storybook-cover-info h2{font-size:clamp(24px,4vw,34px);line-height:1.2;color:#315b96}
+        .storybook-cover-info h3{color:#7b75a8}
+        .storybook-cover-info p{color:#71829a;font-weight:700}
+        .storybook-label,.page-number{font-size:11px;font-weight:900;letter-spacing:1px;color:#df9564}
+        .storybook-placeholder{min-height:260px;display:grid;place-items:center;font-size:90px;background:#fff;border-radius:16px}
+        .storybook-pages{display:grid;gap:22px;margin-top:26px}
+        .storybook-page{display:grid;grid-template-columns:minmax(220px,.9fr) 1.1fr;gap:24px;align-items:center;padding:20px;border:1px solid #e4eaf3;border-radius:20px;background:#fff;break-inside:avoid;page-break-inside:avoid}
+        .storybook-image{min-height:220px;display:grid;place-items:center;background:#f5f7fc;border-radius:15px;overflow:hidden}
+        .storybook-image img{display:block;width:100%;height:100%;max-height:350px;object-fit:contain}
+        .storybook-image span{font-size:70px}
+        .storybook-text{font-size:16px;line-height:1.8;white-space:pre-wrap}
+        .storybook-text h3{color:#315b96;font-size:14px}
+        .storybook-text p{margin:10px 0}
+        .kazakh-text{margin-top:18px;padding-top:12px;border-top:1px dashed #dce5f1;color:#6881a4}
         .saved-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
         .action-primary,.action-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:45px;padding:0 17px;border-radius:13px;font-size:13px;font-weight:1000;text-decoration:none}
         .action-primary{background:#ffdc75;color:#35527b;box-shadow:0 4px 0 #e8bd52}
         .action-secondary{background:#e8eefb;color:#42649b}
         .print-tip{margin:15px 0 0;color:#8794a7;font-size:11px}
-        @media(max-width:600px){
-          .saved-page{padding:14px 12px 35px}
-          .saved-header{flex-wrap:wrap}
-          .saved-card{padding:18px}
-          .saved-brand{order:-1;width:100%}
-          .content-section{padding:14px}
-        }
+        @media(max-width:700px){.storybook-cover,.storybook-page{grid-template-columns:1fr}.storybook-cover img{max-height:300px}}
+        @media(max-width:600px){.saved-page{padding:14px 12px 35px}.saved-header{flex-wrap:wrap}.saved-card{padding:18px}.saved-brand{order:-1;width:100%}.content-section{padding:14px}}
         @media print{
           @page{size:A4;margin:14mm}
           body{background:white!important}
@@ -438,10 +555,11 @@ export default async function SavedMaterialPage({ params }: Props) {
           .saved-header,.saved-kicker,.saved-meta,.saved-actions,.print-tip{display:none!important}
           .saved-card{padding:0;border:0;box-shadow:none}
           .content-section{break-inside:avoid;page-break-inside:avoid}
-          .kit-card,.task-card{break-inside:avoid}
+          .kit-card,.task-card,.storybook-cover,.storybook-page{break-inside:avoid;page-break-inside:avoid}
           .card-image{max-height:170px}
           .single-image{padding:0;background:white}
           .single-image img{max-height:none;width:100%;box-shadow:none}
+          .storybook-image{background:white}
         }
       `}</style>
     </main>
