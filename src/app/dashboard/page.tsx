@@ -26,8 +26,6 @@ export default async function Dashboard() {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Дневной лимит — 20 генераций на аккаунт.
-  // Дата сравнивается в UTC, как время в Supabase.
   const generationLimit = 20;
   const todayUTC = new Date().toISOString().slice(0, 10);
 
@@ -72,6 +70,7 @@ export default async function Dashboard() {
           <Link href="/studio/kit">Умный комплект</Link>
           <Link href="/studio/visuals">Наглядность</Link>
           <Link href="/dashboard/library">📚 Библиотека сказок</Link>
+          <Link href="/games">🎮 Онлайн-игры</Link>
           <Link href="/profile">Мой профиль 👤</Link>
         </nav>
 
