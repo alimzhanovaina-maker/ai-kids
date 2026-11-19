@@ -56,16 +56,19 @@ export default async function SavedMaterialPage({ params }: Props) {
     kit = null;
   }
 
-  // Распознаём сохранённую авторскую сказку
-  const isStorybook =
-    kit?.version === "storybook-v1" &&
-    kit?.story &&
-    Array.isArray(kit?.images);
+  // Проверяем, является ли сохранённый материал авторской сказкой
+  const storybookData: AnyObject | null =
+    kit &&
+    kit.version === "storybook-v1" &&
+    kit.story &&
+    Array.isArray(kit.images)
+      ? kit
+      : null;
 
-  // Получаем безопасные ссылки на обложку и иллюстрации сказки
-  const storybookImages = isStorybook
+  // Получаем ссылки на обложку и иллюстрации
+  const storybookImages: string[] = storybookData
     ? await Promise.all(
-        kit.images.map(async (entry: AnyObject) => {
+        storybookData.images.map(async (entry: AnyObject) => {
           const storagePath =
             typeof entry?.path === "string" ? entry.path : "";
 
@@ -120,7 +123,7 @@ export default async function SavedMaterialPage({ params }: Props) {
       <section className="saved-card">
         <div className="saved-kicker">📚 ТВОЯ КОЛЛЕКЦИЯ</div>
 
-        <h1>{kit?.title || material.title}</h1>
+        <h1>{storybookData?.story?.titleRu || kit?.title || material.title}</h1>
 
         <div className="saved-meta">
           <span>Тип: {material.kind || "Материал"}</span>
@@ -132,8 +135,7 @@ export default async function SavedMaterialPage({ params }: Props) {
           {kit?.age && <span>Возраст: {kit.age}</span>}
 
           <span>
-            Создано:{" "}
-            {new Date(material.created_at).toLocaleDateString("ru-RU")}
+            Создано: {new Date(material.created_at).toLocaleDateString("ru-RU")}
           </span>
 
           <span>
@@ -146,46 +148,49 @@ export default async function SavedMaterialPage({ params }: Props) {
           </span>
         </div>
 
-        {/* АВТОРСКАЯ СКАЗКА */}
-        {isStorybook ? (
+        {/* АВТОРСКИЕ СКАЗКИ */}
+        {storybookData ? (
           <div className="storybook">
             <div className="storybook-cover">
-              {storybookImages[0] ? (
-                <img
-                  src={storybookImages[0]}
-                  alt={kit.story.titleRu || material.title}
-                />
-              ) : (
-                <div className="storybook-placeholder">📖</div>
-              )}
+              <div className="storybook-cover-image">
+                {storybookImages[0] ? (
+                  <img
+                    src={storybookImages[0]}
+                    alt="Обложка сказки"
+                  />
+                ) : (
+                  <div className="storybook-placeholder">📖</div>
+                )}
+              </div>
 
               <div className="storybook-cover-info">
                 <span className="storybook-label">
                   ✨ АВТОРСКАЯ СКАЗКА
                 </span>
 
-                <h2>{kit.story.titleRu || material.title}</h2>
+                <h2>
+                  {storybookData.story.titleRu || material.title}
+                </h2>
 
-                {kit.story.titleKz && (
-                  <h3>{kit.story.titleKz}</h3>
+                {storybookData.story.titleKz && (
+                  <h3>{storybookData.story.titleKz}</h3>
                 )}
 
                 <p>
-                  {safeList(kit.story.pages).length} страниц
-                  {" · "}Иллюстрированная книга
+                  {safeList(storybookData.story.pages).length} страниц
                 </p>
               </div>
             </div>
 
             <div className="storybook-pages">
-              {safeList(kit.story.pages).map(
+              {safeList(storybookData.story.pages).map(
                 (page: AnyObject, i: number) => (
                   <article className="storybook-page" key={i}>
                     <div className="storybook-image">
                       {storybookImages[i + 1] ? (
                         <img
                           src={storybookImages[i + 1]}
-                          alt={`Иллюстрация к странице ${i + 1}`}
+                          alt={`Иллюстрация страницы ${i + 1}`}
                           loading="lazy"
                         />
                       ) : (
@@ -270,8 +275,7 @@ export default async function SavedMaterialPage({ params }: Props) {
                         )}
 
                       <h3>
-                        {card.number || i + 1}.{" "}
-                        {card.title || "Карточка"}
+                        {card.number || i + 1}. {card.title || "Карточка"}
                       </h3>
 
                       {card.titleKz && (
@@ -280,9 +284,7 @@ export default async function SavedMaterialPage({ params }: Props) {
                         </p>
                       )}
 
-                      {card.learningFact && (
-                        <p>{card.learningFact}</p>
-                      )}
+                      {card.learningFact && <p>{card.learningFact}</p>}
                     </article>
                   ))}
                 </div>
@@ -356,7 +358,7 @@ export default async function SavedMaterialPage({ params }: Props) {
             )}
 
             {kit.poster && (
-              <section className="content-section">
+              <section className="content-section poster-section">
                 <h2>🖼️ Плакат: {kit.poster.title}</h2>
 
                 {safeList(kit.poster.sections).map(
@@ -382,9 +384,9 @@ export default async function SavedMaterialPage({ params }: Props) {
             {kit.puzzle && (
               <section className="content-section">
                 <h2>🧩 Пазлы: {kit.puzzle.title}</h2>
-                {kit.puzzle.instruction && (
-                  <p>{kit.puzzle.instruction}</p>
-                )}
+
+                {kit.puzzle.instruction && <p>{kit.puzzle.instruction}</p>}
+
                 {safeList(kit.puzzle.pieces).length > 0 && (
                   <ul>
                     {safeList(kit.puzzle.pieces).map((x: any, i: number) => (
@@ -443,6 +445,7 @@ export default async function SavedMaterialPage({ params }: Props) {
             {vocabulary.length > 0 && (
               <section className="content-section">
                 <h2>🌍 Словарь</h2>
+
                 <div className="vocabulary">
                   {vocabulary.map((word: AnyObject, i: number) => (
                     <p key={i}>
@@ -490,8 +493,7 @@ export default async function SavedMaterialPage({ params }: Props) {
         </div>
 
         <p className="print-tip">
-          Для печати или сохранения в PDF нажми Ctrl + P и выбери
-          «Сохранить как PDF».
+          Для печати или сохранения в PDF нажми Ctrl + P и выбери «Сохранить как PDF».
         </p>
       </section>
 
@@ -526,7 +528,7 @@ export default async function SavedMaterialPage({ params }: Props) {
         .text-material{white-space:pre-wrap;padding:24px;border-radius:16px;background:#fffdf8;color:#334b6b;font-size:15px;line-height:1.75}
         .storybook{margin-top:24px}
         .storybook-cover{display:grid;grid-template-columns:minmax(220px,.9fr) 1.1fr;gap:25px;align-items:center;padding:22px;border-radius:22px;background:linear-gradient(135deg,#fff3d9,#f4eaff)}
-        .storybook-cover img{width:100%;max-height:390px;object-fit:contain;border-radius:16px;background:#fff}
+        .storybook-cover-image img{width:100%;max-height:390px;object-fit:contain;border-radius:16px;background:#fff}
         .storybook-cover-info h2{font-size:clamp(24px,4vw,34px);line-height:1.2;color:#315b96}
         .storybook-cover-info h3{color:#7b75a8}
         .storybook-cover-info p{color:#71829a;font-weight:700}
@@ -546,7 +548,7 @@ export default async function SavedMaterialPage({ params }: Props) {
         .action-primary{background:#ffdc75;color:#35527b;box-shadow:0 4px 0 #e8bd52}
         .action-secondary{background:#e8eefb;color:#42649b}
         .print-tip{margin:15px 0 0;color:#8794a7;font-size:11px}
-        @media(max-width:700px){.storybook-cover,.storybook-page{grid-template-columns:1fr}.storybook-cover img{max-height:300px}}
+        @media(max-width:700px){.storybook-cover,.storybook-page{grid-template-columns:1fr}.storybook-cover-image img{max-height:300px}}
         @media(max-width:600px){.saved-page{padding:14px 12px 35px}.saved-header{flex-wrap:wrap}.saved-card{padding:18px}.saved-brand{order:-1;width:100%}.content-section{padding:14px}}
         @media print{
           @page{size:A4;margin:14mm}
