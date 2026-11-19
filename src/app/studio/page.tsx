@@ -88,9 +88,22 @@ function markdownToHtml(text: string) {
   return html;
 }
 
-function documentHtml(content: string, title: string, illustration: string | null) {
+function documentHtml(
+  content: string,
+  teacherGuide: string,
+  title: string,
+  illustration: string | null,
+  isWorksheet: boolean
+) {
   const image = illustration
-    ? `<img class="worksheet-image" src="${escapeHTML(illustration)}" alt="Иллюстрация к рабочему листу" />`
+    ? `<div class="picture"><img src="${escapeHTML(illustration)}" alt="Иллюстрации к заданиям" /></div>`
+    : "";
+
+  const guide = teacherGuide
+    ? `<section class="teacher-page">
+        <h1>Ответы и рекомендации воспитателю</h1>
+        ${markdownToHtml(teacherGuide)}
+      </section>`
     : "";
 
   return `<!doctype html>
@@ -103,23 +116,25 @@ function documentHtml(content: string, title: string, illustration: string | nul
 * { box-sizing: border-box; }
 body {
   font-family: Arial, sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
   color: #30496b;
   margin: 0;
 }
-h1 { color: #315b96; font-size: 23px; text-align: center; }
-h2 { color: #315b96; font-size: 17px; margin-top: 17px; }
-h3 { color: #426ca6; font-size: 15px; }
-p { margin: 7px 0; }
-li { margin-bottom: 5px; }
-.worksheet-image {
-  display: block;
+h1 { color: #315b96; font-size: 22px; text-align: center; }
+h2 { color: #315b96; font-size: 16px; margin-top: 12px; }
+h3 { color: #426ca6; font-size: 14px; }
+p { margin: 5px 0; }
+li { margin-bottom: 4px; }
+.picture { text-align: center; margin: 10px auto; }
+.picture img {
   width: 100%;
-  max-width: 100%;
-  max-height: 250px;
+  max-height: 145mm;
   object-fit: contain;
-  margin: 12px auto;
+}
+.teacher-page {
+  page-break-before: always;
+  break-before: page;
 }
 @media print {
   body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
@@ -127,8 +142,10 @@ li { margin-bottom: 5px; }
 </style>
 </head>
 <body>
-${image}
+${isWorksheet ? `<h1>${escapeHTML(title)}</h1>` : ""}
 ${markdownToHtml(content)}
+${image}
+${guide}
 </body>
 </html>`;
 }
@@ -140,6 +157,7 @@ export default function Studio() {
   const [language, setLanguage] = useState("both");
   const [format, setFormat] = useState("Цветной, для детей");
   const [result, setResult] = useState("");
+  const [teacherGuide, setTeacherGuide] = useState("");
   const [illustration, setIllustration] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -159,6 +177,7 @@ export default function Studio() {
     setBusy(true);
     setError("");
     setResult("");
+    setTeacherGuide("");
     setIllustration(null);
 
     try {
@@ -175,6 +194,7 @@ export default function Studio() {
       }
 
       setResult(data.content || "");
+      setTeacherGuide(data.teacherGuide || "");
       setIllustration(data.illustration || null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Произошла ошибка");
@@ -210,11 +230,20 @@ export default function Studio() {
     }
   }
 
-  function downloadWord() {
-    const blob = new Blob(
-      ["\ufeff", documentHtml(result, labels[type] + ": " + topic, illustration)],
-      { type: "application/msword;charset=utf-8" }
+  function getDocument() {
+    return documentHtml(
+      result,
+      teacherGuide,
+      labels[type] + ": " + topic,
+      illustration,
+      type === "worksheet"
     );
+  }
+
+  function downloadWord() {
+    const blob = new Blob(["\ufeff", getDocument()], {
+      type: "application/msword;charset=utf-8",
+    });
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -233,9 +262,7 @@ export default function Studio() {
     }
 
     win.document.open();
-    win.document.write(
-      documentHtml(result, labels[type] + ": " + topic, illustration)
-    );
+    win.document.write(getDocument());
     win.document.close();
 
     win.onload = () => {
@@ -246,7 +273,9 @@ export default function Studio() {
 
   async function copyText() {
     try {
-      await navigator.clipboard.writeText(result);
+      await navigator.clipboard.writeText(
+        result + (teacherGuide ? "\n\nОтветы воспитателю:\n" + teacherGuide : "")
+      );
       setError("Текст скопирован!");
     } catch {
       setError("Не удалось скопировать текст.");
@@ -266,8 +295,10 @@ export default function Studio() {
       window.location.assign("/studio/character");
       return;
     }
+
     setType(toolId);
     setResult("");
+    setTeacherGuide("");
     setIllustration(null);
     setError("");
   }
@@ -392,17 +423,34 @@ export default function Studio() {
             <section className="result">
               <h3>📚 Твой готовый материал!</h3>
 
-              {illustration && (
-                <div className="illustration">
-                  <p><b>🎨 3D-иллюстрация для рабочего листа</b></p>
-                  <img src={illustration} alt="Иллюстрация к рабочему листу" />
+              <div className="child-sheet">
+                <div className="sheet-label">📄 СТРАНИЦА 1 — ДЛЯ РЕБЁНКА</div>
+
+                <div
+                  className="result-content"
+                  dangerouslySetInnerHTML={{ __html: markdownToHtml(result) }}
+                />
+
+                {illustration && (
+                  <div className="illustration">
+                    <p><b>🎨 Иллюстрации к заданиям</b></p>
+                    <img src={illustration} alt="Иллюстрации к рабочему листу" />
+                  </div>
+                )}
+              </div>
+
+              {teacherGuide && (
+                <div className="teacher-sheet">
+                  <div className="sheet-label">📘 СТРАНИЦА 2 — ДЛЯ ВОСПИТАТЕЛЯ</div>
+                  <h3>Ответы и подсказки</h3>
+                  <div
+                    className="result-content"
+                    dangerouslySetInnerHTML={{
+                      __html: markdownToHtml(teacherGuide),
+                    }}
+                  />
                 </div>
               )}
-
-              <div
-                className="result-content"
-                dangerouslySetInnerHTML={{ __html: markdownToHtml(result) }}
-              />
 
               <div className="actions">
                 <button onClick={downloadWord}>📄 Скачать Word</button>
@@ -453,11 +501,14 @@ export default function Studio() {
         .create:disabled{opacity:.6;cursor:wait}
         .notice{padding:13px;background:#fff5d9;border-radius:13px;color:#8a7041;font-weight:800}
         .result{margin-top:25px;padding-top:22px;border-top:2px dashed #e9dfce}
-        .result-content{background:#fffdf9;border:2px solid #f0e8dc;border-radius:17px;padding:22px;line-height:1.8;overflow-wrap:anywhere}
+        .child-sheet,.teacher-sheet{padding:18px;margin-top:15px;border:2px solid #e8edf5;border-radius:17px;background:#fffdf9}
+        .sheet-label{font-size:12px;font-weight:900;color:#5279b7;margin-bottom:12px}
+        .result-content{line-height:1.8;overflow-wrap:anywhere}
         .result-content :global(h1),.result-content :global(h2){color:#315b96}
         .result-content :global(h2){border-bottom:2px solid #e7edf6;padding-bottom:8px}
-        .illustration{margin:15px 0;padding:15px;background:#f5f8ff;border-radius:16px}
-        .illustration img{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:12px}
+        .illustration{margin:15px 0;padding:12px;background:#f5f8ff;border-radius:16px}
+        .illustration img{display:block;width:100%;max-height:500px;object-fit:contain;border-radius:12px}
+        .teacher-sheet{background:#f7f9ff}
         .actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px}
         .actions button{border:2px solid #e7edf5;border-radius:12px;padding:11px 14px;background:white;color:#426ba8;font-weight:900;cursor:pointer}
         .quick{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:28px 0}
