@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -5,7 +6,7 @@ import { useState } from "react";
 import {
   ArrowRight, BookOpen, Brain, ClipboardList, Gamepad2, HeartHandshake,
   Image as ImageIcon, Languages, Menu, Music2, Printer, Sparkles,
-  Speech, WandSparkles, X, Star
+  Speech, WandSparkles, X
 } from "lucide-react";
 
 type Lang = "ru" | "kz";
@@ -26,6 +27,9 @@ const copy = {
     pro: "AI KIDS PRO", proDesc: "Больше творчества, расширенные генераторы и целая библиотека идей.",
     soon: "Скоро доступно", create: "Создать аккаунт", footer: "AI KIDS · Большие идеи для маленьких открытий",
     age: "Для детей 3–6 лет", bilingual: "Қазақша + Русский",
+    gameTitle: "Онлайн-игры для маленьких исследователей!",
+    gameDesc: "Считай, находи пары, угадывай животных и выполняй весёлые задания прямо на сайте.",
+    gameButton: "Играть сейчас",
     items: [
       ["Дидактические игры", "Весёлые задания, игры с правилами и маленькие открытия.", "🧩", "game"],
       ["Авторские сказки", "Придумывай добрые истории с героями и приключениями.", "📚", "story"],
@@ -55,6 +59,9 @@ const copy = {
     pro: "AI KIDS PRO", proDesc: "Көбірек шығармашылық, кеңейтілген генераторлар мен идеялар кітапханасы.",
     soon: "Жақында", create: "Аккаунт ашу", footer: "AI KIDS · Кішкентай жаңалықтарға арналған үлкен идеялар",
     age: "3–6 жастағы балаларға", bilingual: "Қазақша + Русский",
+    gameTitle: "Кішкентай зерттеушілерге арналған онлайн ойындар!",
+    gameDesc: "Сана, жұбын тап, жануарларды таны және қызықты тапсырмаларды орында!",
+    gameButton: "Ойнау",
     items: [
       ["Дидактикалық ойындар", "Көңілді тапсырмалар, ережелі ойындар мен жаңалықтар.", "🧩", "game"],
       ["Авторлық ертегілер", "Кейіпкерлері мен оқиғалары бар мейірімді ертегілер.", "📚", "story"],
@@ -108,6 +115,7 @@ export default function Home() {
           <a href="#features">{t.nav[0]}</a>
           <a href="#plans">{t.nav[1]}</a>
           <Link href="/studio">{t.nav[2]}</Link>
+          <Link href="/games">🎮 Онлайн-игры</Link>
         </nav>
         <div className="header-actions">
           <button className="language-switch" onClick={() => setLang(lang === "ru" ? "kz" : "ru")} aria-label="Переключить язык">
@@ -126,6 +134,7 @@ export default function Home() {
           <a href="#features" onClick={() => setMobileOpen(false)}>{t.nav[0]}</a>
           <a href="#plans" onClick={() => setMobileOpen(false)}>{t.nav[1]}</a>
           <Link href="/studio" onClick={() => setMobileOpen(false)}>{t.nav[2]}</Link>
+          <Link href="/games" onClick={() => setMobileOpen(false)}>🎮 Онлайн-игры</Link>
         </nav>
       )}
 
@@ -162,6 +171,18 @@ export default function Home() {
       <div className="ticker" aria-hidden="true">
         <span>🌼 ИГРАЙ</span><span>⭐ СОЗДАВАЙ</span><span>🦋 УЧИСЬ</span><span>🌈 ФАНТАЗИРУЙ</span><span>🍓 ТВОРИ</span>
       </div>
+
+      <section className="game-banner">
+        <div className="game-art" aria-hidden="true">
+          <span>🎮</span><span>🧩</span><span>🐰</span><span>⭐</span>
+        </div>
+        <div className="game-copy">
+          <span className="section-eyebrow">🌟 AI KIDS PLAY</span>
+          <h2>{t.gameTitle}</h2>
+          <p>{t.gameDesc}</p>
+        </div>
+        <Link className="button button-yellow" href="/games">{t.gameButton}<ArrowRight size={18}/></Link>
+      </section>
 
       <section className="features-section" id="features">
         <div className="section-heading">
@@ -235,6 +256,30 @@ export default function Home() {
         <span>{t.footer}</span>
         <span className="footer-languages">🌈 Қазақша · Русский</span>
       </footer>
+
+      <style jsx>{`
+        .game-banner {
+          margin: 35px 0;
+          padding: 30px 36px;
+          border-radius: 28px;
+          background: linear-gradient(115deg, #ffe4a8, #f9dff0, #dceaff);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 25px;
+          color: #30496b;
+          box-shadow: 0 8px 0 #eee6dc;
+        }
+        .game-art { display:flex; align-items:center; gap:8px; font-size:38px; flex-shrink:0; }
+        .game-copy { flex:1; }
+        .game-copy h2 { margin:8px 0; font-size:clamp(22px,3vw,32px); }
+        .game-copy p { margin:0; color:#637894; line-height:1.6; }
+        .game-banner .button { text-decoration:none; white-space:nowrap; }
+        @media(max-width:700px) {
+          .game-banner { flex-direction:column; align-items:flex-start; padding:24px; }
+          .game-art { font-size:30px; }
+        }
+      `}</style>
     </main>
   );
 }
