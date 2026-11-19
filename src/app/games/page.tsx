@@ -9,6 +9,7 @@ const games = [
   { id: "count", title: "Посчитай предметы", emoji: "🔢", color: "#e3efff", desc: "Посчитай картинки и выбери правильный ответ" },
   { id: "odd", title: "Найди лишнее", emoji: "🔎", color: "#e1f5e8", desc: "Найди картинку, которая не подходит" },
   { id: "shadow", title: "Угадай животное", emoji: "🐾", color: "#fff0d8", desc: "Подбери животное к его силуэту" },
+  { id: "puzzle", title: "Собери картинку", emoji: "🧩", color: "#eee5ff", desc: "Поставь части картинки на свои места" },
 ];
 
 const memoryCards = ["🐱", "🐶", "🐰", "🦊", "🐸", "🐻", "🐱", "🐶", "🐰", "🦊", "🐸", "🐻"];
@@ -22,7 +23,7 @@ const countTasks = [
 
 const oddTasks = [
   { items: ["🐶", "🐱", "🐰", "🚗"], answer: 3, hint: "Найди то, что не является животным." },
-  { items: ["🍎", "🍐", "🍌", "🐟"], answer: 3, hint: "Найди то, что нельзя съесть как фрукт." },
+  { items: ["🍎", "🍐", "🍌", "🐟"], answer: 3, hint: "Найди то, что не является фруктом." },
   { items: ["🚗", "🚌", "🚲", "🌷"], answer: 3, hint: "Найди то, что не является транспортом." },
 ];
 
@@ -31,6 +32,20 @@ const shadowTasks = [
   { shadow: "🐸", options: ["🐻", "🐸", "🦊"], answer: 1 },
   { shadow: "🦋", options: ["🐝", "🦋", "🐞"], answer: 1 },
 ];
+
+const puzzlePicture = ["🌳", "🌞", "🏡", "🌷"];
+
+function shufflePuzzle() {
+  const result = [...puzzlePicture];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  if (result.every((item, index) => item === puzzlePicture[index])) {
+    [result[0], result[1]] = [result[1], result[0]];
+  }
+  return result;
+}
 
 export default function GamesPage() {
   const [selected, setSelected] = useState("");
@@ -42,8 +57,12 @@ export default function GamesPage() {
   const [shadowIndex, setShadowIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState("");
+  const [puzzleTiles, setPuzzleTiles] = useState<string[]>(puzzlePicture);
+  const [puzzleSelected, setPuzzleSelected] = useState<number | null>(null);
+  const [puzzleMoves, setPuzzleMoves] = useState(0);
 
   const ru = language === "ru";
+  const puzzleSolved = puzzleTiles.every((item, index) => item === puzzlePicture[index]);
 
   function startGame(id: string) {
     setSelected(id);
@@ -54,6 +73,9 @@ export default function GamesPage() {
     setShadowIndex(0);
     setScore(0);
     setMessage("");
+    setPuzzleTiles(shufflePuzzle());
+    setPuzzleSelected(null);
+    setPuzzleMoves(0);
   }
 
   function flipCard(index: number) {
@@ -70,7 +92,10 @@ export default function GamesPage() {
         setOpened([]);
       } else {
         setMessage(ru ? "Попробуй ещё раз!" : "Қайталап көр!");
-        setTimeout(() => setOpened([]), 900);
+        setTimeout(() => {
+          setOpened([]);
+          setMessage("");
+        }, 900);
       }
     }
   }
@@ -115,6 +140,42 @@ export default function GamesPage() {
     }
   }
 
+  function selectPuzzleTile(index: number) {
+    if (puzzleSolved) return;
+
+    if (puzzleSelected === null) {
+      setPuzzleSelected(index);
+      setMessage(ru ? "Теперь выбери вторую карточку для обмена." : "Енді ауыстыру үшін екінші бөлікті таңда.");
+      return;
+    }
+
+    if (puzzleSelected === index) {
+      setPuzzleSelected(null);
+      setMessage("");
+      return;
+    }
+
+    const next = [...puzzleTiles];
+    [next[puzzleSelected], next[index]] = [next[index], next[puzzleSelected]];
+    setPuzzleTiles(next);
+    setPuzzleSelected(null);
+    setPuzzleMoves((old) => old + 1);
+
+    if (next.every((item, i) => item === puzzlePicture[i])) {
+      setScore((old) => old + 1);
+      setMessage(ru ? "Ура! Картинка собрана! 🏆" : "Алақай! Сурет құрастырылды! 🏆");
+    } else {
+      setMessage(ru ? "Хорошо! Продолжай собирать картинку." : "Жақсы! Суретті құрастыруды жалғастыр.");
+    }
+  }
+
+  function restartPuzzle() {
+    setPuzzleTiles(shufflePuzzle());
+    setPuzzleSelected(null);
+    setPuzzleMoves(0);
+    setMessage("");
+  }
+
   return (
     <main className="games">
       <header>
@@ -148,7 +209,8 @@ export default function GamesPage() {
                   memory: "Жұбын тап",
                   count: "Заттарды сана",
                   odd: "Артығын тап",
-                  shadow: "Жануарды таны"
+                  shadow: "Жануарды таны",
+                  puzzle: "Суретті құрастыр"
                 } as Record<string, string>)[game.id]}</b>
                 <small>{ru ? game.desc : "Ойна және тапсырманы орында!"}</small>
                 <span className="play">{ru ? "Играть →" : "Ойнау →"}</span>
@@ -164,7 +226,7 @@ export default function GamesPage() {
           {selected === "memory" && (
             <>
               <h2>{ru ? "Найди одинаковые картинки" : "Бірдей суреттерді тап"}</h2>
-              <p>{ru ? "Нажимай на две карточки сразу — открывай по одной." : "Карточкаларды бір-бірден аш."}</p>
+              <p>{ru ? "Открывай карточки по одной и находи пары." : "Карточкаларды бір-бірден ашып, жұптарын тап."}</p>
               <div className="memory-grid">
                 {memoryCards.map((card, index) => (
                   <button key={index} className={`memory-card ${matched.includes(index) ? "matched" : ""}`} onClick={() => flipCard(index)}>
@@ -189,7 +251,7 @@ export default function GamesPage() {
           {selected === "odd" && (
             <>
               <h2>{ru ? "Найди лишнюю картинку" : "Артық суретті тап"}</h2>
-              <p>{oddTasks[oddIndex].hint}</p>
+              <p>{ru ? oddTasks[oddIndex].hint : "Артық суретті анықта."}</p>
               <div className="picture-answers">
                 {oddTasks[oddIndex].items.map((item, index) => <button key={index} onClick={() => answerOdd(index)}>{item}</button>)}
               </div>
@@ -207,8 +269,37 @@ export default function GamesPage() {
             </>
           )}
 
+          {selected === "puzzle" && (
+            <>
+              <h2>{ru ? "Собери картинку!" : "Суретті құрастыр!"}</h2>
+              <p>{ru ? "Посмотри на образец. Нажми на две части, чтобы поменять их местами." : "Үлгіге қара. Екі бөлікті басып, орындарын ауыстыр."}</p>
+              <div className="puzzle-reference">
+                <span>{ru ? "Образец:" : "Үлгі:"}</span>
+                <div className="reference-pieces">
+                  {puzzlePicture.map((piece, index) => <span key={index}>{piece}</span>)}
+                </div>
+              </div>
+              <div className="puzzle-board">
+                {puzzleTiles.map((piece, index) => (
+                  <button
+                    key={index}
+                    className={`puzzle-tile ${puzzleSelected === index ? "chosen" : ""} ${puzzleSolved ? "correct" : ""}`}
+                    onClick={() => selectPuzzleTile(index)}
+                  >
+                    {piece}
+                  </button>
+                ))}
+              </div>
+              <p className="moves">{ru ? "Перестановок:" : "Ауыстыру саны:"} {puzzleMoves}</p>
+              {puzzleSolved && <h3>🏆 {ru ? "Молодец! Ты собрал картинку!" : "Жарайсың! Суретті құрастырдың!"}</h3>}
+              <button className="again" onClick={restartPuzzle}>{ru ? "Перемешать и начать снова ↻" : "Араластырып, қайта бастау ↻"}</button>
+            </>
+          )}
+
           {message && <div className="message">{message}</div>}
-          <button className="again" onClick={() => startGame(selected)}>{ru ? "Начать заново ↻" : "Қайта бастау ↻"}</button>
+          {selected !== "puzzle" && (
+            <button className="again" onClick={() => startGame(selected)}>{ru ? "Начать заново ↻" : "Қайта бастау ↻"}</button>
+          )}
         </section>
       )}
 
@@ -243,9 +334,17 @@ export default function GamesPage() {
         .shadow{font-size:100px;filter:grayscale(1);opacity:.7;margin:20px}
         .message{margin:20px auto;padding:15px;background:#e5f6e9;border-radius:15px;font-size:18px;font-weight:900;max-width:500px}
         .again{margin-top:20px;border:0;border-radius:14px;padding:13px 20px;background:#ffdf83;color:#405b83;font-weight:900;cursor:pointer}
+        .puzzle-reference{display:flex;flex-direction:column;align-items:center;gap:8px;margin:20px auto;color:#687d9a;font-weight:700}
+        .reference-pieces{display:grid;grid-template-columns:repeat(2,55px);gap:4px}
+        .reference-pieces span{height:45px;display:grid;place-items:center;background:#f0eaff;border-radius:9px;font-size:25px}
+        .puzzle-board{display:grid;grid-template-columns:repeat(2,minmax(100px,145px));gap:10px;justify-content:center;margin:25px auto}
+        .puzzle-tile{height:125px;border:3px solid #e2d8fa;border-radius:18px;background:#eee7ff;font-size:58px;cursor:pointer;transition:.15s}
+        .puzzle-tile.chosen{border-color:#7c63c7;background:#dcd0ff;transform:scale(.96)}
+        .puzzle-tile.correct{background:#ddf5e5;border-color:#8ac9a0}
+        .moves{color:#71829a;font-weight:700}
         footer{text-align:center;padding:30px;color:#8a98aa;border-top:2px dashed #e8e4dc;margin-top:35px}
         @media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.hero-art{font-size:32px}}
-        @media(max-width:520px){.games{padding:15px}.hero{padding:22px;flex-direction:column;align-items:flex-start}.grid{grid-template-columns:1fr 1fr;gap:10px}.game-card{padding:15px;min-height:200px}.memory-card{height:75px;font-size:30px}.big-items{font-size:45px}.play-area{padding:15px}}
+        @media(max-width:520px){.games{padding:15px}.hero{padding:22px;flex-direction:column;align-items:flex-start}.grid{grid-template-columns:1fr 1fr;gap:10px}.game-card{padding:15px;min-height:200px}.memory-card{height:75px;font-size:30px}.big-items{font-size:45px}.play-area{padding:15px}.puzzle-tile{height:105px;font-size:48px}}
       `}</style>
     </main>
   );
