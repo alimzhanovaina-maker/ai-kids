@@ -4,143 +4,249 @@
 import { useState } from "react";
 import Link from "next/link";
 
+type Task = {
+  items: string[];
+  answer: number;
+  hint: string;
+};
+
+type ShadowTask = {
+  animal: string;
+  options: string[];
+  answer: number;
+};
+
+const shuffle = <T,>(items: T[]): T[] => {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+};
+
 const games = [
   { id: "memory", title: "Найди пару", emoji: "🧩", color: "#fce4f0", desc: "Найди одинаковые картинки" },
   { id: "count", title: "Посчитай предметы", emoji: "🔢", color: "#e3efff", desc: "Посчитай предметы" },
   { id: "odd", title: "Найди лишнее", emoji: "🔎", color: "#e1f5e8", desc: "Найди лишнюю картинку" },
   { id: "shadow", title: "Угадай животное", emoji: "🐾", color: "#fff0d8", desc: "Угадай животное" },
-  { id: "puzzle", title: "Собери картинку", emoji: "🧩", color: "#eee5ff", desc: "Собери красивую картинку" },
+  { id: "puzzle", title: "Собери картинку", emoji: "🎨", color: "#eee5ff", desc: "Собери красивую картинку" },
 ];
 
-const memoryCards = ["🐱", "🐶", "🐰", "🦊", "🐸", "🐻", "🐱", "🐶", "🐰", "🦊", "🐸", "🐻"];
-const countTasks = [{ emoji: "🍎", count: 3 }, { emoji: "⭐", count: 5 }, { emoji: "🐥", count: 4 }, { emoji: "🍓", count: 2 }];
-const oddTasks = [
-  { items: ["🐶", "🐱", "🐰", "🚗"], answer: 3, hint: "Найди то, что не является животным." },
-  { items: ["🍎", "🍐", "🍌", "🐟"], answer: 3, hint: "Найди то, что не является фруктом." },
+const memoryPool = [
+  "🐱", "🐶", "🐰", "🦊", "🐸", "🐻", "🦁", "🐼",
+  "🐵", "🐯", "🐮", "🐷", "🐨", "🐔", "🦉", "🐢",
+  "🦋", "🐝", "🐞", "🐬", "🐙", "🦄", "🐘", "🦒",
+  "🍎", "🍓", "🍐", "🍌", "🍇", "🍉", "🍒", "🥕",
+  "🌻", "🌷", "🌈", "⭐", "🚗", "🚂", "✈️", "⚽",
+];
+
+const countObjects = [
+  "🍎", "⭐", "🐥", "🍓", "🚗", "🌸", "🐠", "🍐",
+  "🦋", "🍪", "🐸", "🌼", "🎈", "🍋", "🐞", "🚂",
+  "🥕", "🐰", "🌙", "⚽",
+];
+
+const oddPool: Task[] = [
+  { items: ["🐶", "🐱", "🐰", "🚗"], answer: 3, hint: "Найди транспорт среди животных." },
+  { items: ["🍎", "🍐", "🍌", "🐟"], answer: 3, hint: "Найди того, кто не является фруктом." },
   { items: ["🚗", "🚌", "🚲", "🌷"], answer: 3, hint: "Найди то, что не является транспортом." },
+  { items: ["🥕", "🥔", "🍅", "🐻"], answer: 3, hint: "Найди животное среди овощей." },
+  { items: ["🐟", "🐬", "🦀", "✈️"], answer: 3, hint: "Найди то, что не живёт в воде." },
+  { items: ["🌞", "⭐", "🌙", "🍓"], answer: 3, hint: "Найди то, что не находится в небе." },
+  { items: ["👕", "👖", "👗", "🍉"], answer: 3, hint: "Найди то, что не является одеждой." },
+  { items: ["✏️", "📚", "📏", "🐘"], answer: 3, hint: "Найди животное среди школьных принадлежностей." },
+  { items: ["🌹", "🌷", "🌻", "🚂"], answer: 3, hint: "Найди то, что не является цветком." },
+  { items: ["🥛", "🧀", "🧈", "🦊"], answer: 3, hint: "Найди животное среди продуктов." },
+  { items: ["🚒", "🚑", "🚓", "🐸"], answer: 3, hint: "Найди животное среди машин." },
+  { items: ["🐝", "🦋", "🐞", "🍍"], answer: 3, hint: "Найди фрукт среди насекомых." },
 ];
-const shadowTasks = [
-  { shadow: "🐱", options: ["🐱", "🐶", "🐰"], answer: 0 },
-  { shadow: "🐸", options: ["🐻", "🐸", "🦊"], answer: 1 },
-  { shadow: "🦋", options: ["🐝", "🦋", "🐞"], answer: 1 },
+
+const shadowPool: ShadowTask[] = [
+  { animal: "🐱", options: ["🐱", "🐶", "🐰"], answer: 0 },
+  { animal: "🐸", options: ["🐻", "🐸", "🦊"], answer: 1 },
+  { animal: "🦋", options: ["🐝", "🦋", "🐞"], answer: 1 },
+  { animal: "🦁", options: ["🐯", "🐮", "🦁"], answer: 2 },
+  { animal: "🐘", options: ["🦒", "🐘", "🐼"], answer: 1 },
+  { animal: "🐰", options: ["🐰", "🐭", "🐱"], answer: 0 },
+  { animal: "🐢", options: ["🐍", "🐢", "🐊"], answer: 1 },
+  { animal: "🐬", options: ["🐟", "🦈", "🐬"], answer: 2 },
+  { animal: "🦉", options: ["🦉", "🐧", "🦆"], answer: 0 },
+  { animal: "🐵", options: ["🐻", "🐵", "🐨"], answer: 1 },
+  { animal: "🦒", options: ["🦓", "🦒", "🐴"], answer: 1 },
+  { animal: "🐙", options: ["🦀", "🐠", "🐙"], answer: 2 },
 ];
 
-const foxPicture = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
-<defs>
-<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#65c9ff"/><stop offset="1" stop-color="#d8f5ff"/></linearGradient>
-<linearGradient id="grass" x2="0" y2="1"><stop stop-color="#8bdc59"/><stop offset="1" stop-color="#32a94c"/></linearGradient>
-<linearGradient id="fur" x2="0" y2="1"><stop stop-color="#ffb34f"/><stop offset="1" stop-color="#ed6b19"/></linearGradient>
-</defs>
-<rect width="600" height="600" fill="url(#sky)"/>
-<circle cx="500" cy="100" r="48" fill="#fff7b0"/>
-<g fill="#fff"><ellipse cx="100" cy="120" rx="65" ry="24"/><ellipse cx="145" cy="105" rx="42" ry="30"/><ellipse cx="185" cy="125" rx="50" ry="20"/></g>
-<path d="M0 370 Q130 270 260 365 T600 340 V600 H0Z" fill="#83d45a"/>
-<path d="M0 450 Q180 350 330 440 T600 410 V600 H0Z" fill="url(#grass)"/>
-<g fill="#fff5a8"><circle cx="75" cy="440" r="9"/><circle cx="95" cy="420" r="9"/><circle cx="115" cy="440" r="9"/><circle cx="95" cy="460" r="9"/></g>
-<g fill="#ff79ad"><circle cx="500" cy="400" r="10"/><circle cx="520" cy="380" r="10"/><circle cx="540" cy="400" r="10"/><circle cx="520" cy="420" r="10"/></g>
-<path d="M360 430 Q510 500 460 370 Q420 285 340 355 Q300 390 360 430Z" fill="#fff0d7" stroke="#b9541d" stroke-width="12"/>
-<path d="M245 360 Q185 270 205 140 Q280 155 300 245 Q335 150 410 140 Q430 275 360 360Z" fill="url(#fur)" stroke="#a94b19" stroke-width="13"/>
-<path d="M235 225 Q245 180 260 190 L282 270Z M355 270 L390 190 Q410 185 415 225 L375 290Z" fill="#ffd0c5"/>
-<ellipse cx="305" cy="385" rx="145" ry="145" fill="url(#fur)" stroke="#a94b19" stroke-width="12"/>
-<ellipse cx="305" cy="440" rx="112" ry="83" fill="#fff0d7"/>
-<path d="M180 380 Q210 310 300 340 Q385 310 430 380 Q395 440 305 425 Q220 440 180 380Z" fill="#fff9ed"/>
-<ellipse cx="255" cy="370" rx="18" ry="25" fill="#292b38"/><ellipse cx="355" cy="370" rx="18" ry="25" fill="#292b38"/>
-<circle cx="261" cy="362" r="6" fill="#fff"/><circle cx="361" cy="362" r="6" fill="#fff"/>
-<path d="M290 405 Q305 390 320 405 Q310 425 300 420Z" fill="#38252a"/>
-<path d="M300 420 Q285 442 270 428 M310 420 Q325 442 340 428" fill="none" stroke="#713c36" stroke-width="6" stroke-linecap="round"/>
-<ellipse cx="220" cy="520" rx="48" ry="28" fill="#fff0d7"/><ellipse cx="390" cy="520" rx="48" ry="28" fill="#fff0d7"/>
-<g fill="#fff"><circle cx="145" cy="520" r="8"/><circle cx="165" cy="500" r="8"/><circle cx="185" cy="520" r="8"/><circle cx="165" cy="540" r="8"/></g>
-</svg>`;
+const scenes = [
+  { name: "Лес", emoji: "🦊", sky: "#bceaff", ground: "#80cf76", extra: "🌳" },
+  { name: "Сад", emoji: "🐰", sky: "#ffe0ed", ground: "#a8dc82", extra: "🌷" },
+  { name: "Море", emoji: "🐬", sky: "#a9e6ff", ground: "#54b9df", extra: "🐠" },
+  { name: "Ферма", emoji: "🐮", sky: "#fff0bd", ground: "#9bd879", extra: "🐥" },
+  { name: "Саванна", emoji: "🦁", sky: "#ffd9a2", ground: "#d8c16e", extra: "🌴" },
+  { name: "Космос", emoji: "🚀", sky: "#333c80", ground: "#6d70bb", extra: "⭐" },
+];
 
-const foxImage = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(foxPicture)}`;
+function makeSceneImage(scene: typeof scenes[number]) {
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+    <rect width="600" height="600" fill="${scene.sky}"/>
+    <circle cx="490" cy="105" r="48" fill="#fff6ae"/>
+    <path d="M0 370 Q150 290 300 370 T600 350 V600 H0Z" fill="${scene.ground}"/>
+    <path d="M0 465 Q160 390 320 465 T600 435 V600 H0Z" fill="#ffffff25"/>
+    <text x="300" y="390" font-size="205" text-anchor="middle" dominant-baseline="middle">${scene.emoji}</text>
+    <text x="115" y="170" font-size="75" text-anchor="middle">☁️</text>
+    <text x="475" y="270" font-size="82" text-anchor="middle">${scene.extra}</text>
+    <text x="300" y="540" font-size="36" font-family="Arial" font-weight="bold" fill="#ffffff" text-anchor="middle">${scene.name}</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
 
-function shufflePuzzle() {
-  const result = [0, 1, 2, 3];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
+function makeMemoryDeck() {
+  return shuffle(memoryPool).slice(0, 6).flatMap(item => [item, item]).sort(() => Math.random() - 0.5);
+}
+
+function makeCountTask() {
+  const emoji = countObjects[Math.floor(Math.random() * countObjects.length)];
+  const count = Math.floor(Math.random() * 10) + 1;
+  return { emoji, count };
+}
+
+function makeCountOptions(answer: number) {
+  const values = new Set([answer]);
+  while (values.size < 4) {
+    values.add(Math.max(1, Math.min(10, answer + Math.floor(Math.random() * 7) - 3)));
   }
-  if (result.every((v, i) => v === i)) [result[0], result[1]] = [result[1], result[0]];
-  return result;
+  return shuffle([...values]);
+}
+
+function makePuzzle() {
+  const scene = scenes[Math.floor(Math.random() * scenes.length)];
+  const image = makeSceneImage(scene);
+  const tiles = shuffle([0, 1, 2, 3]);
+  if (tiles.every((v, i) => v === i)) [tiles[0], tiles[1]] = [tiles[1], tiles[0]];
+  return { scene, image, tiles };
 }
 
 export default function GamesPage() {
   const [selected, setSelected] = useState("");
   const [language, setLanguage] = useState<"ru" | "kz">("ru");
+  const [memoryCards, setMemoryCards] = useState<string[]>(makeMemoryDeck());
   const [opened, setOpened] = useState<number[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
-  const [countIndex, setCountIndex] = useState(0);
+  const [countTask, setCountTask] = useState(makeCountTask());
+  const [countOptions, setCountOptions] = useState(makeCountOptions(countTask.count));
+  const [oddTasks, setOddTasks] = useState<Task[]>(shuffle(oddPool));
   const [oddIndex, setOddIndex] = useState(0);
+  const [shadowTasks, setShadowTasks] = useState<ShadowTask[]>(shuffle(shadowPool));
   const [shadowIndex, setShadowIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState("");
-  const [tiles, setTiles] = useState<number[]>([2, 0, 3, 1]);
+  const [puzzle, setPuzzle] = useState(makePuzzle());
   const [chosen, setChosen] = useState<number | null>(null);
   const [moves, setMoves] = useState(0);
+  const [locked, setLocked] = useState(false);
 
   const ru = language === "ru";
-  const solved = tiles.every((tile, index) => tile === index);
+  const solved = puzzle.tiles.every((tile, index) => tile === index);
+  const currentOdd = oddTasks[oddIndex];
+  const currentShadow = shadowTasks[shadowIndex];
 
   function startGame(id: string) {
     setSelected(id);
     setOpened([]);
     setMatched([]);
-    setCountIndex(0);
+    setMemoryCards(makeMemoryDeck());
+    setCountTask(makeCountTask());
+    setCountOptions(makeCountOptions(makeCountTask().count));
+    setOddTasks(shuffle(oddPool));
     setOddIndex(0);
+    setShadowTasks(shuffle(shadowPool));
     setShadowIndex(0);
     setScore(0);
     setMessage("");
-    setTiles(shufflePuzzle());
+    setPuzzle(makePuzzle());
     setChosen(null);
     setMoves(0);
+    setLocked(false);
   }
 
   function flipCard(index: number) {
-    if (opened.length === 2 || opened.includes(index) || matched.includes(index)) return;
+    if (locked || opened.length === 2 || opened.includes(index) || matched.includes(index)) return;
     const next = [...opened, index];
     setOpened(next);
+
     if (next.length === 2) {
+      setLocked(true);
       if (memoryCards[next[0]] === memoryCards[next[1]]) {
         setMatched(old => [...old, ...next]);
         setScore(old => old + 1);
         setMessage(ru ? "Молодец! Нашёл пару! 🌟" : "Жарайсың! Жұбын таптың! 🌟");
         setOpened([]);
+        setLocked(false);
       } else {
         setMessage(ru ? "Попробуй ещё раз!" : "Қайталап көр!");
-        setTimeout(() => { setOpened([]); setMessage(""); }, 900);
+        setTimeout(() => {
+          setOpened([]);
+          setMessage("");
+          setLocked(false);
+        }, 850);
       }
     }
   }
 
+  function nextCount() {
+    const next = makeCountTask();
+    setCountTask(next);
+    setCountOptions(makeCountOptions(next.count));
+  }
+
   function answerCount(value: number) {
-    if (value !== countTasks[countIndex].count) {
+    if (value !== countTask.count) {
       setMessage(ru ? "Попробуй ещё раз 😊" : "Қайталап көр 😊");
       return;
     }
     setScore(old => old + 1);
     setMessage(ru ? "Правильно! Отлично! 🎉" : "Дұрыс! Тамаша! 🎉");
-    setTimeout(() => { setMessage(""); setCountIndex(old => (old + 1) % countTasks.length); }, 700);
+    setTimeout(() => {
+      setMessage("");
+      nextCount();
+    }, 650);
   }
 
   function answerOdd(value: number) {
-    if (value !== oddTasks[oddIndex].answer) {
+    if (value !== currentOdd.answer) {
       setMessage(ru ? "Подумай ещё немножко!" : "Тағы ойланып көр!");
       return;
     }
     setScore(old => old + 1);
     setMessage(ru ? "Верно! Ты внимательный! ⭐" : "Дұрыс! Сен зерексің! ⭐");
-    setTimeout(() => { setMessage(""); setOddIndex(old => (old + 1) % oddTasks.length); }, 700);
+    setTimeout(() => {
+      setMessage("");
+      if (oddIndex + 1 >= oddTasks.length) {
+        setOddTasks(shuffle(oddPool));
+        setOddIndex(0);
+      } else {
+        setOddIndex(old => old + 1);
+      }
+    }, 650);
   }
 
   function answerShadow(value: number) {
-    if (value !== shadowTasks[shadowIndex].answer) {
+    if (value !== currentShadow.answer) {
       setMessage(ru ? "Попробуй ещё!" : "Қайталап көр!");
       return;
     }
     setScore(old => old + 1);
     setMessage(ru ? "Ты угадал! 🥳" : "Дұрыс таптың! 🥳");
-    setTimeout(() => { setMessage(""); setShadowIndex(old => (old + 1) % shadowTasks.length); }, 700);
+    setTimeout(() => {
+      setMessage("");
+      if (shadowIndex + 1 >= shadowTasks.length) {
+        setShadowTasks(shuffle(shadowPool));
+        setShadowIndex(0);
+      } else {
+        setShadowIndex(old => old + 1);
+      }
+    }, 650);
   }
 
   function selectTile(index: number) {
@@ -155,21 +261,21 @@ export default function GamesPage() {
       setMessage("");
       return;
     }
-    const next = [...tiles];
+    const next = [...puzzle.tiles];
     [next[chosen], next[index]] = [next[index], next[chosen]];
-    setTiles(next);
+    setPuzzle(old => ({ ...old, tiles: next }));
     setChosen(null);
     setMoves(old => old + 1);
     if (next.every((tile, i) => tile === i)) {
       setScore(old => old + 1);
-      setMessage(ru ? "Ура! Лисичка собрана! 🏆" : "Алақай! Түлкі құрастырылды! 🏆");
+      setMessage(ru ? "Ура! Картинка собрана! 🏆" : "Алақай! Сурет құрастырылды! 🏆");
     } else {
       setMessage(ru ? "Отлично! Продолжай собирать." : "Жақсы! Құрастыруды жалғастыр.");
     }
   }
 
   function restartPuzzle() {
-    setTiles(shufflePuzzle());
+    setPuzzle(makePuzzle());
     setChosen(null);
     setMoves(0);
     setMessage("");
@@ -223,47 +329,74 @@ export default function GamesPage() {
             <h2>{ru ? "Найди одинаковые картинки" : "Бірдей суреттерді тап"}</h2>
             <p>{ru ? "Открывай карточки по одной и находи пары." : "Карточкаларды бір-бірден ашып, жұптарын тап."}</p>
             <div className="memory-grid">
-              {memoryCards.map((card, index) => <button key={index} className={`memory-card ${matched.includes(index) ? "matched" : ""}`} onClick={() => flipCard(index)}>{opened.includes(index) || matched.includes(index) ? card : "❔"}</button>)}
+              {memoryCards.map((card, index) => (
+                <button key={index} className={`memory-card ${matched.includes(index) ? "matched" : ""}`} onClick={() => flipCard(index)}>
+                  {opened.includes(index) || matched.includes(index) ? card : "❔"}
+                </button>
+              ))}
             </div>
             {matched.length === memoryCards.length && <h3>🏆 {ru ? "Ты нашёл все пары! Молодец!" : "Барлық жұпты таптың! Жарайсың!"}</h3>}
           </>}
 
           {selected === "count" && <>
             <h2>{ru ? "Сколько предметов ты видишь?" : "Неше зат көріп тұрсың?"}</h2>
-            <div className="big-items">{Array.from({ length: countTasks[countIndex].count }).map((_, i) => <span key={i}>{countTasks[countIndex].emoji}</span>)}</div>
-            <div className="answers">{[1, 2, 3, 4, 5, 6].map(n => <button key={n} onClick={() => answerCount(n)}>{n}</button>)}</div>
+            <div className="big-items">
+              {Array.from({ length: countTask.count }).map((_, i) => <span key={i}>{countTask.emoji}</span>)}
+            </div>
+            <div className="answers">
+              {countOptions.map(n => <button key={n} onClick={() => answerCount(n)}>{n}</button>)}
+            </div>
           </>}
 
           {selected === "odd" && <>
             <h2>{ru ? "Найди лишнюю картинку" : "Артық суретті тап"}</h2>
-            <p>{ru ? oddTasks[oddIndex].hint : "Артық суретті анықта."}</p>
-            <div className="picture-answers">{oddTasks[oddIndex].items.map((item, index) => <button key={index} onClick={() => answerOdd(index)}>{item}</button>)}</div>
+            <p>{ru ? currentOdd.hint : "Артық суретті анықта."}</p>
+            <div className="picture-answers">
+              {shuffle(currentOdd.items.map((item, index) => ({ item, index }))).map(({ item, index }) => (
+                <button key={index} onClick={() => answerOdd(index)}>{item}</button>
+              ))}
+            </div>
           </>}
 
           {selected === "shadow" && <>
             <h2>{ru ? "Кто спрятался?" : "Кім жасырынды?"}</h2>
-            <div className="shadow">{shadowTasks[shadowIndex].shadow}</div>
+            <div className="shadow">{currentShadow.animal}</div>
             <p>{ru ? "Найди такое же животное." : "Осындай жануарды тап."}</p>
-            <div className="picture-answers">{shadowTasks[shadowIndex].options.map((item, index) => <button key={index} onClick={() => answerShadow(index)}>{item}</button>)}</div>
+            <div className="picture-answers">
+              {shuffle(currentShadow.options.map((item, index) => ({ item, index }))).map(({ item, index }) => (
+                <button key={index} onClick={() => answerShadow(index)}>{item}</button>
+              ))}
+            </div>
           </>}
 
           {selected === "puzzle" && <>
-            <h2>{ru ? "Собери картинку с лисичкой!" : "Түлкінің суретін құрастыр!"}</h2>
+            <h2>{ru ? `Собери картинку: ${puzzle.scene.name}!` : "Суретті құрастыр!"}</h2>
             <p>{ru ? "Посмотри на образец. Выбирай две части, чтобы поменять их местами." : "Үлгіге қара. Екі бөлікті таңдап, орындарын ауыстыр."}</p>
             <div className="puzzle-layout">
               <div className="sample">
                 <b>{ru ? "Образец:" : "Үлгі:"}</b>
-                <div className="sample-image" />
+                <div className="sample-image" style={{ backgroundImage: `url("${puzzle.image}")` }} />
               </div>
               <div className="puzzle-main">
                 <div className="puzzle-board">
-                  {tiles.map((tile, index) => <button key={index} aria-label={`Фрагмент ${index + 1}`} className={`puzzle-tile ${chosen === index ? "chosen" : ""} ${solved ? "correct" : ""}`} onClick={() => selectTile(index)} style={{ backgroundImage: `url("${foxImage}")`, backgroundPosition: tilePositions[tile] }} />)}
+                  {puzzle.tiles.map((tile, index) => (
+                    <button
+                      key={index}
+                      aria-label={`Фрагмент ${index + 1}`}
+                      className={`puzzle-tile ${chosen === index ? "chosen" : ""} ${solved ? "correct" : ""}`}
+                      onClick={() => selectTile(index)}
+                      style={{
+                        backgroundImage: `url("${puzzle.image}")`,
+                        backgroundPosition: tilePositions[tile]
+                      }}
+                    />
+                  ))}
                 </div>
                 <p className="moves">{ru ? "Перестановок:" : "Ауыстыру саны:"} {moves}</p>
               </div>
             </div>
-            {solved && <h3>🏆 {ru ? "Молодец! Ты собрал лисичку!" : "Жарайсың! Түлкіні құрастырдың!"}</h3>}
-            <button className="again" onClick={restartPuzzle}>{ru ? "Перемешать и начать снова ↻" : "Араластырып, қайта бастау ↻"}</button>
+            {solved && <h3>🏆 {ru ? "Молодец! Ты собрал картинку!" : "Жарайсың! Суретті құрастырдың!"}</h3>}
+            <button className="again" onClick={restartPuzzle}>{ru ? "Другая картинка ↻" : "Басқа сурет ↻"}</button>
           </>}
 
           {message && <div className="message">{message}</div>}
@@ -292,7 +425,7 @@ export default function GamesPage() {
         .back{float:left}.score{display:inline-block;background:#fff1c9;padding:10px 15px;border-radius:15px;font-weight:900}
         .memory-grid{max-width:560px;margin:25px auto;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
         .memory-card{height:105px;border:0;border-radius:18px;background:#e6edff;font-size:40px;cursor:pointer}.memory-card.matched{background:#dcf4e3}
-        .big-items{display:flex;justify-content:center;flex-wrap:wrap;gap:15px;margin:35px auto;font-size:65px;max-width:500px}
+        .big-items{display:flex;justify-content:center;flex-wrap:wrap;gap:15px;margin:35px auto;font-size:55px;max-width:600px}
         .answers,.picture-answers{display:flex;justify-content:center;flex-wrap:wrap;gap:15px;margin:25px auto}
         .answers button,.picture-answers button{width:85px;height:85px;border:2px solid #e2eaf6;border-radius:20px;background:#eef3ff;font-size:38px;cursor:pointer}
         .answers button{font-weight:900;color:#416ca8}.picture-answers button{background:#fff0d8}
@@ -301,7 +434,7 @@ export default function GamesPage() {
         .again{margin-top:20px;border:0;border-radius:14px;padding:13px 20px;background:#ffdf83;color:#405b83;font-weight:900;cursor:pointer}
         .puzzle-layout{display:flex;justify-content:center;align-items:center;gap:35px;flex-wrap:wrap;margin:25px auto}
         .sample{padding:15px;background:#f5efff;border-radius:20px;display:flex;flex-direction:column;gap:10px}
-        .sample-image{width:210px;height:210px;border-radius:14px;background-image:url("${foxImage}");background-size:cover;background-position:center}
+        .sample-image{width:210px;height:210px;border-radius:14px;background-size:cover;background-position:center}
         .puzzle-board{width:min(440px,90vw);aspect-ratio:1;display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:auto}
         .puzzle-tile{border:4px solid #e2d8fa;border-radius:16px;background-repeat:no-repeat;background-size:200% 200%;cursor:pointer;min-width:0;min-height:0;transition:.15s}
         .puzzle-tile.chosen{border-color:#8057dc;box-shadow:0 0 0 4px #d8c7ff;transform:scale(.97)}
@@ -309,7 +442,7 @@ export default function GamesPage() {
         .moves{color:#71829a;font-weight:700;margin-top:18px}
         footer{text-align:center;padding:30px;color:#8a98aa;border-top:2px dashed #e8e4dc;margin-top:35px}
         @media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.hero-art{font-size:32px}}
-        @media(max-width:520px){.games{padding:15px}.hero{padding:22px;flex-direction:column;align-items:flex-start}.grid{grid-template-columns:1fr 1fr;gap:10px}.game-card{padding:15px;min-height:200px}.memory-card{height:75px;font-size:30px}.big-items{font-size:45px}.play-area{padding:15px}.puzzle-layout{gap:18px}.sample-image{width:150px;height:150px}}
+        @media(max-width:520px){.games{padding:15px}.hero{padding:22px;flex-direction:column;align-items:flex-start}.grid{grid-template-columns:1fr 1fr;gap:10px}.game-card{padding:15px;min-height:200px}.memory-card{height:75px;font-size:30px}.big-items{font-size:38px}.play-area{padding:15px}.puzzle-layout{gap:18px}.sample-image{width:150px;height:150px}}
       `}</style>
     </main>
   );
